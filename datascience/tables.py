@@ -3148,19 +3148,24 @@ class Table(collections.abc.MutableMapping):
     ##################
 
     # As RGB tuples
-    chart_colors = (
-        (81/256, 38/256, 152/256),
-        (253/256, 204/256, 9/256),
-        (0.0, 150/256, 207/256),
-        (30/256, 100/256, 0.0),
-        (172/256, 60/256, 72/256),
-    )
-    chart_colors += tuple(tuple((x+0.7)/2 for x in c) for c in chart_colors)
+#     chart_colors = (
+#         (81/256, 38/256, 152/256),
+#         (253/256, 204/256, 9/256),
+#         (0.0, 150/256, 207/256),
+#         (30/256, 100/256, 0.0),
+#         (172/256, 60/256, 72/256),
+#     )
+#     chart_colors += tuple(tuple((x+0.7)/2 for x in c) for c in chart_colors)
 
-    plotly_chart_colors = tuple(
-        f"rgb({tup[0]},{tup[1]},{tup[2]})" for tup in
-        tuple(tuple(int(256 * val) for val in tup) for tup in chart_colors)
-    )
+    prop_cycle = plt.rcParams['axes.prop_cycle']
+    chart_colors = [matplotlib.colors.to_rgb(x) for x in prop_cycle.by_key()['color']]
+
+
+    plotly_chart_colors = ()
+#     = tuple(
+#         f"rgb({tup[0]},{tup[1]},{tup[2]})" for tup in
+#         tuple(tuple(int(256 * val) for val in tup) for tup in chart_colors)
+#     )
 
 
     default_alpha = 0.7
@@ -4059,10 +4064,31 @@ class Table(collections.abc.MutableMapping):
 
         if height is None:
             height = 5
-
+            
         options = self.default_options.copy()
         options.update(vargs)
 
+        ax_props = [
+         'clip_on',
+         'title',
+         'xlabel',
+         'xlim',
+         'xscale',
+         'ylabel',
+         'ylim',
+         'yscale'
+        ]
+        
+        vis_options = {  }
+        if 'ax' in options:
+            ax = options.pop('ax')
+            for key in ax_props:
+                if key in options:
+                    vis_options[key] = options.pop(key)
+        else:
+            ax = None
+                        
+                
         x_data, y_labels =  self._split_column_and_labels(column_for_x)
         if "colors" in vargs and vargs["colors"]:
             warnings.warn("scatter(colors=x) has been removed. Use scatter(group=x)", FutureWarning)
@@ -4087,14 +4113,22 @@ class Table(collections.abc.MutableMapping):
             y_data = self[label]
             if sizes is not None:
                 max_size = max(self[sizes]) ** 0.5
-                size = 2 * s * self[sizes] ** 0.5 / max_size
+                size = 2 * s * self[sizes] ** 0.5 / max_size                
+                
             else:
                 size = s
-            axis.scatter(x_data, y_data, color=color, s=size, **options)
+            plt_scatter = axis.scatter(x_data, y_data, color=color, s=size, **options)
             if fit_line:
-                m, b = np.polyfit(x_data, self[label], 1)
-                minx, maxx = np.min(x_data),np.max(x_data)
-                axis.plot([minx,maxx],[m*minx+b,m*maxx+b], color=color)
+                if group is not None:
+                    for t,g_color in zip ([self.where(group, c) for c in colored], color_list):
+                        x_data_group = t[column_for_x]
+                        m, b = np.polyfit(x_data_group, t[label], 1)                        
+                        minx, maxx = np.min(x_data_group),np.max(x_data_group)
+                        axis.plot([minx,maxx],[m*minx+b,m*maxx+b], color=g_color,lw=3)
+                else:
+                    m, b = np.polyfit(x_data, self[label], 1)
+                    minx, maxx = np.min(x_data),np.max(x_data)
+                    axis.plot([minx,maxx],[m*minx+b,m*maxx+b], color=color)
             if labels is not None:
                 for x, y, label in zip(x_data, y_data, self[labels]):
                     axis.annotate(label, (x, y),
@@ -4105,12 +4139,13 @@ class Table(collections.abc.MutableMapping):
             if group is not None:
                 import matplotlib.patches as mpatches
                 group_col_name = self._as_label(group)
-                patches = [mpatches.Patch(color=c, label="{0}={1}".format(group_col_name, v)) \
-                    for (v, c) in color_map.items()]
-                axis.legend(loc=2, bbox_to_anchor=(1.05, 1), handles=patches)
+                patches = [mpatches.Patch(color=c, label=v) \
+                     for (v, c) in color_map.items()] 
+                axis.set_ylabel(label)
+                axis.legend(loc=2, bbox_to_anchor=(1.05, 1), handles=patches, title=group_col_name)
 
         x_label = self._as_label(column_for_x)
-        self._visualize(x_label, y_labels, None, overlay, draw, _vertical_x, width=width, height=height)
+        self._visualize(x_label, y_labels, None, overlay, draw, _vertical_x, width=width, height=height,ax=ax, **vis_options)
 
     def iscatter(self, column_for_x, select=None, overlay=True, fit_line=False,
         group=None, labels=None, sizes=None, width=None, height=None, s=5,
@@ -4671,7 +4706,7 @@ class Table(collections.abc.MutableMapping):
         else:
             return fig
 
-    def _visualize(self, x_label, y_labels, ticks, overlay, draw, annotate, width=6, height=4):
+    def _visualize(self, x_label, y_labels, ticks, overlay, draw, annotate, width=6, height=4,ax=None, **kwargs):
         """Generic visualization that overlays or separates the draw function.
 
         Raises:
@@ -4686,7 +4721,17 @@ class Table(collections.abc.MutableMapping):
 
         n = len(y_labels)
         colors = list(itertools.islice(itertools.cycle(self.chart_colors), n))
-        if overlay and n > 1:
+        if ax != None:
+            ax.set(**kwargs)
+            if x_label is not None:
+                ax.set_xlabel(x_label)
+            for label, color in zip(y_labels, colors):
+                draw(ax, label, color)
+            if ticks is not None:
+                annotate(ax, ticks)
+            #ax.legend(y_labels, loc=2, bbox_to_anchor=(1.05, 1))
+            type(self).plots.append(ax)
+        elif overlay and n > 1:
             _, axis = plt.subplots(figsize=(width, height))
             if x_label is not None:
                 axis.set_xlabel(x_label)
@@ -5065,9 +5110,10 @@ class Table(collections.abc.MutableMapping):
             left_end_ind = np.digitize(left_end, bins) - 1 if left_end is not None else len(bins)
             right_end_ind = np.digitize(right_end, bins) - 1 if right_end is not None else -1
             if left_end is not None or right_end is not None:
-                if i >= 1: # Gold is reserved for shading
-                    i += 1
-                shade_color = colors[1] 
+#                 if i >= 1: # Gold is reserved for shading
+#                     i += 1
+#                 shade_color = colors[1] 
+                shade_color = (253/256, 204/256, 9/256)    
                 bin_colors = [colors[i]] * (len(bins) - 1)
                 if left_end == right_end:
                     return False, bin_colors
@@ -5394,6 +5440,16 @@ class Table(collections.abc.MutableMapping):
         if height is None:
             height = self.default_height
 
+#         vis_options = {  } 
+#         options = vargs.copy()
+#         if 'ax' in options:
+#             ax = options.pop('ax')
+#             for key in ax.properties().keys():
+#                 if key in options:
+#                     vis_options[key] = options.pop(key)
+#         else:
+#             ax = None            
+            
         if counts is not None and bin_column is None:
             warnings.warn("counts arg of hist is deprecated; use bin_column")
             bin_column=counts
@@ -5497,11 +5553,14 @@ class Table(collections.abc.MutableMapping):
                     vargs['weights'] = weights
                 if not side_by_side:
                     vargs.setdefault('histtype', 'stepfilled')
-                figure = plt.figure(figsize=(width, height))
-                plt.hist(values, color=colors, **vargs)
-                # if rug:
-                #     plt.scatter(values, np.zeros_like(values), marker="|", color=colors)
-                axis = figure.get_axes()[0]
+                if 'ax' in vargs:
+                    axis = vargs.pop('ax')
+                    axis.hist(values, color=colors, **vargs)
+                else:
+                    figure = plt.figure(figsize=(width, height))
+                    plt.hist(values, color=colors, **vargs)
+                    axis = figure.get_axes()[0]
+                    
                 _vertical_x(axis)
                 axis.set_ylabel(y_label)
                 if vargs['density']:
@@ -5516,14 +5575,20 @@ class Table(collections.abc.MutableMapping):
                 plt.legend(hist_names, loc=2, bbox_to_anchor=(1.05, 1))
                 type(self).plots.append(axis)
             else:
-                _, axes = plt.subplots(n, 1, figsize=(width, height * n))
+                if 'ax' in vargs:
+                    assert n == 1
+                    axis = vargs.pop('ax')
+                    axes = [axis]
+                else:
+                    _, axes = plt.subplots(n, 1, figsize=(width, height * n))
+                    if n == 1:
+                        axes = [axes]
+
                 if 'bins' in vargs:
                     bins = vargs['bins']
                     if isinstance(bins, numbers.Integral) and bins > 76 or hasattr(bins, '__len__') and len(bins) > 76:
                         # Use stepfilled when there are too many bins
                         vargs.setdefault('histtype', 'stepfilled')
-                if n == 1:
-                    axes = [axes]
                 for i, (axis, hist_name, values_for_hist, color) in enumerate(zip(axes, hist_names, values, colors)):
                     axis.set_ylabel(y_label)
                     if vargs['density']:
@@ -5536,7 +5601,7 @@ class Table(collections.abc.MutableMapping):
                     if left_end is not None and right_end is not None:
                         x_shade, height_shade, width_shade = _compute_shading(heights, bins.copy(), left_end, right_end)
                         axis.bar(x_shade, height_shade, width=width_shade,
-                                 color=self.chart_colors[1], align="edge")
+                                 color=(253/256, 204/256, 9/256), align="edge")
                     _vertical_x(axis)
                     if rug:
                         axis.scatter(values_for_hist, np.zeros_like(values_for_hist), marker="|",
