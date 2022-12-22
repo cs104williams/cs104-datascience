@@ -1,6 +1,6 @@
 """Tables are sequences of labeled columns."""
 
-__all__ = ['Table', 'push_ax', 'pop_ax']
+__all__ = ['Table', 'push_ax', 'pop_ax', 'Dot']
 
 import abc
 import collections
@@ -4449,3 +4449,23 @@ class _RowExcluder(_RowSelector):
 # For Sphinx: grab the docstrings from `Taker.__getitem__` and `Withouter.__getitem__`
 Table.take.__doc__ = _RowTaker.__getitem__.__doc__
 Table.exclude.__doc__ = _RowExcluder.__getitem__.__doc__
+
+
+class PlotMarker:
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
+
+    def draw(self, ax):
+        pass
+    
+class Dot(PlotMarker):
+    def __init__(self, x, y, **kwargs):
+        super(Dot,self).__init__(**kwargs)
+        self.x = x
+        self.y = y
+    
+    def draw(self, ax):
+        self.kwargs.setdefault('s', 30)
+        self.kwargs.setdefault('color', 'red')
+        self.kwargs.setdefault('edgecolor', 'white')
+        ax.scatter(self.x,self.y,**self.kwargs,clip_on=False,zorder=10)
