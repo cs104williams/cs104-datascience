@@ -1,6 +1,6 @@
 """Tables are sequences of labeled columns."""
 
-__all__ = ['Table']
+__all__ = ['Table', 'push_ax', 'pop_ax']
 
 import abc
 import collections
@@ -31,6 +31,16 @@ def prep():
     import seaborn
     seaborn.set_theme(context='talk', palette='tab10')
     return [matplotlib.colors.to_rgba(c) for c in plt.rcParams['axes.prop_cycle'].by_key()['color']]
+
+_ax_stack = [ ]
+
+def push_ax(ax):
+    global _ax_stack
+    _ax_stack.append(ax)
+    
+def pop_ax():
+    global _ax_stack
+    return _ax_stack.pop()
 
 class Table(collections.abc.MutableMapping):
     """A sequence of string-labeled columns."""
@@ -3277,7 +3287,11 @@ class Table(collections.abc.MutableMapping):
         
         ax = kwargs.pop('ax', None)
         if ax == None:
-            _, ax = plt.subplots(figsize=(width, height))
+            global _ax_stack
+            if len(_ax_stack) > 0: 
+                ax = _ax_stack[-1]
+            else:
+                _, ax = plt.subplots(figsize=(width, height))
         else:
             # so legends don't overlap adjacent if we are being given an axis...
             fig = ax.get_figure()
