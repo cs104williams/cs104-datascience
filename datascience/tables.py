@@ -1,6 +1,6 @@
 """Tables are sequences of labeled columns."""
 
-__all__ = ['Table', 'push_ax', 'pop_ax', 'Dot']
+__all__ = ['Table', 'Plot' ]
 
 import abc
 import collections
@@ -32,15 +32,7 @@ def prep():
     seaborn.set_theme(context='talk', palette='tab10')
     return [matplotlib.colors.to_rgba(c) for c in plt.rcParams['axes.prop_cycle'].by_key()['color']]
 
-_ax_stack = [ ]
-
-def push_ax(ax):
-    global _ax_stack
-    _ax_stack.append(ax)
-    
-def pop_ax():
-    global _ax_stack
-    return _ax_stack.pop()
+_global_params = { }
 
 class Table(collections.abc.MutableMapping):
     """A sequence of string-labeled columns."""
@@ -3165,7 +3157,7 @@ class Table(collections.abc.MutableMapping):
     default_scatter_options = {
         'width': 6,
         'height': 5,
-        'alpha': 0.7,
+        'alpha': 0.8,
     }    
 
     default_bar_options = {
@@ -3189,23 +3181,23 @@ class Table(collections.abc.MutableMapping):
         'ylim',
         'yscale'
     ]
-        
-    def _split_kwargs_for_axis_and_plot(self, **kwargs):
-        axis_options = { }
-        plot_options = kwargs.copy()
-        for key in self.axis_properties:
-            if key in plot_options:
-                axis_options[key] = plot_options.pop(key)
-                
-        return axis_options, plot_options    
- 
-    def _legend(self, ax, title=None, labels=[]):
+    
+    def split(self, keys_lists, kwargs):
+        args_lists = [ {} for _ in range(len(keys_lists)) ]
+        args_last = { }
+        for key,value in kwargs.items():
+            for keys,args in zip(keys_lists, args_lists):
+                if key in keys:
+                    args[key] = value
+                    break
+            else:
+                args_last[key] = value
+        args_lists.append(args_last)
+        return args_lists
+     
+    def _complete_axes(self, ax, title=None, labels=[]):
         if len(labels) > 1:
             legend = ax.legend(labels, loc=2, title=title, bbox_to_anchor=(1.05, 1))
-#             fig = ax.get_figure()
-#             if len(fig.get_axes()) > 1:
-#                 legend.set_in_layout(True)
-
 
     def plot(self, x_column, y_column=None, **kwargs):
         """Plot line charts for the table. 
@@ -3267,7 +3259,8 @@ class Table(collections.abc.MutableMapping):
 
         _vertical_x(ax)
         
-        self._legend(ax, labels=y_labels)
+        self._complete_axes(ax, labels=y_labels)
+        return Plot(ax)
 
 
 
@@ -3285,21 +3278,20 @@ class Table(collections.abc.MutableMapping):
         width = kwargs.pop('width')
         height = kwargs.pop('height')
         
-        ax = kwargs.pop('ax', None)
+        all_kwargs = _global_params.copy()
+        all_kwargs.update(kwargs)
+        
+        ax = all_kwargs.pop('ax', None)
+
         if ax == None:
-            global _ax_stack
-            if len(_ax_stack) > 0: 
-                ax = _ax_stack[-1]
-            else:
-                _, ax = plt.subplots(figsize=(width, height))
+            _, ax = plt.subplots(figsize=(width, height))
         else:
             # so legends don't overlap adjacent if we are being given an axis...
             fig = ax.get_figure()
-            if len(fig.get_axes()) > 1:
-                ax.get_figure().tight_layout()
+            ax.get_figure().set_tight_layout(True)
         ax.clear()
         
-        axis_options, plot_options = self._split_kwargs_for_axis_and_plot(**kwargs)
+        axis_options, plot_options = self.split([self.axis_properties], all_kwargs)
         
         matplotlib.rcParams.update({
             'axes.labelsize': 18.0,
@@ -3318,6 +3310,7 @@ class Table(collections.abc.MutableMapping):
         })
         ax.set(**axis_options)
         
+
         return ax, colors, plot_options
 
 
@@ -3402,7 +3395,8 @@ class Table(collections.abc.MutableMapping):
         # barh plots entries in reverse order from bottom to top
         ax.set_yticklabels(yticks[::-1], stretch='ultra-condensed')      
 
-        self._legend(ax, labels=labels)
+        self._complete_axes(ax, labels=labels)
+        return Plot(ax)
         
         
         
@@ -3507,7 +3501,9 @@ class Table(collections.abc.MutableMapping):
         self_with_size = self.with_columns(size_label, size)
         
         def scatter(x_values, y_values, size_values, color):
-            ax.scatter(x_values, y_values, sizes = size_values, color = color, **plot_options)
+            opts = plot_options.copy()
+            opts.setdefault('color', color)
+            ax.scatter(x_values, y_values, sizes = size_values, **opts)
             if fit_line:
                 m, b = np.polyfit(x_values, y_values, 1)
                 minx, maxx = np.min(x_values),np.max(x_values)
@@ -3523,16 +3519,17 @@ class Table(collections.abc.MutableMapping):
                 group_data = self_with_size.where(group, v)
                 scatter(group_data[x_label], group_data[y_labels[0]], group_data[size_label], c)
             legend_labels = group_values
-            legend_title = group
+            legend_title = self._as_label(group)
         else:
             for y_label,c in zip(y_labels, colors):
                 scatter(self_with_size[x_label], self_with_size[y_label], self_with_size[size_label], c)
             legend_labels = y_labels
             legend_title = None
                 
-        self._legend(ax, legend_title, legend_labels)
-        
         _vertical_x(ax)                            
+        self._complete_axes(ax, legend_title, legend_labels)
+        return Plot(ax)
+        
 
         
     def hist(self, *columns, bins=None, group=None, left_end=None, right_end=None, **kwargs):
@@ -3672,9 +3669,13 @@ class Table(collections.abc.MutableMapping):
             ax.hist(group_values, color=colors, **plot_options)
                 
             legend_labels = grouped.column(group)
-            legend_title = group
+            legend_title = self._as_label(group)
         else:
-            heights, bins, _ = ax.hist([self[label] for label in labels], color=colors, **plot_options)
+            if len(labels) == 1:
+                x = self[labels[0]]
+            else:
+                x = [self[label] for label in labels]
+            heights, bins, _ = ax.hist(x, color=colors, **plot_options)
 
             if left_end is not None and right_end is not None:
                 # only gets here if we had only one label and no group...
@@ -3685,79 +3686,8 @@ class Table(collections.abc.MutableMapping):
             legend_labels = labels
             legend_title = None
                 
-        self._legend(ax, legend_title, legend_labels[::-1])
-                    
-                    
-#         def draw_hist(values_dict):
-#             # This code is factored as a function for clarity only.
-#             n = len(values_dict)
-#             colors = [rgb_color + (self.default_alpha,) for rgb_color in
-#                 itertools.islice(itertools.cycle(self.chart_colors), n)]
-#             hist_names = list(values_dict.keys())
-#             values = list(values_dict.values())
-                
-#             y_label = 'Percent per unit'
-#             percentage = plt.FuncFormatter(lambda x, _: "{:g}".format(100*x))
-            
-#             if overlay and n > 1:
-#                 # Reverse because legend prints bottom-to-top
-#                 values = values[::-1]
-#                 colors = list(colors)[::-1]
-
-#                 vargs.setdefault('histtype', 'stepfilled')
-#                 if 'ax' in vargs:
-#                     axis = vargs.pop('ax')
-#                     axis.hist(values, color=colors, **vargs)
-#                 else:
-#                     figure = plt.figure(figsize=(width, height))
-#                     plt.hist(values, color=colors, **vargs)
-#                     axis = figure.get_axes()[0]
-                    
-#                 _vertical_x(axis)
-#                 axis.set_ylabel(y_label)
-#                 axis.yaxis.set_major_formatter(percentage)
-#                 if group is not None and len(self.labels) == 2:
-#                     #There's a grouping in place but we're only plotting one column's values
-#                     label_not_grouped = [l for l in self.labels if l != group][0]
-#                     axis.set_xlabel(label_not_grouped, fontsize=16)
-#                 else:
-#                     axis.set_xlabel(x_unit, fontsize=16)
-#                 plt.legend(hist_names, loc=2, bbox_to_anchor=(1.05, 1))
-#                 type(self).plots.append(axis)
-#             else:
-#                 if 'ax' in vargs:
-#                     assert n == 1
-#                     axis = vargs.pop('ax')
-#                     axes = [axis]
-#                 else:
-#                     _, axes = plt.subplots(n, 1, figsize=(width, height * n))
-#                     if n == 1:
-#                         axes = [axes]
-
-#                 if 'bins' in vargs:
-#                     bins = vargs['bins']
-                    
-#                     ## Will want to do this when group is none and columns is one...
-#                     if isinstance(bins, numbers.Integral) and bins > 76 or hasattr(bins, '__len__') and len(bins) > 76:
-#                         # Use stepfilled when there are too many bins
-#                         vargs.setdefault('histtype', 'stepfilled')
-                        
-#                 for i, (axis, hist_name, values_for_hist, color) in enumerate(zip(axes, hist_names, values, colors)):
-#                     axis.set_ylabel(y_label)
-#                     axis.yaxis.set_major_formatter(percentage)
-#                     axis.set_xlabel(hist_name, fontsize=16)
-#                     heights, bins, _ = axis.hist(values_for_hist, color=color, **vargs)
-#                     if left_end is not None and right_end is not None:
-#                         x_shade, height_shade, width_shade = _compute_shading(heights, bins.copy(), left_end, right_end)
-#                         axis.bar(x_shade, height_shade, width=width_shade,
-#                                  color=(253/256, 204/256, 9/256), align="edge")
-#                     _vertical_x(axis)
-#                     type(self).plots.append(axis)
-
-#         draw_hist(values_dict)
-
-
-
+        self._complete_axes(ax, legend_title, legend_labels[::-1])
+        return Plot(ax)
 
     def _split_column_and_labels(self, column_or_label):
         """Return the specified column and labels of other columns."""
@@ -4450,22 +4380,116 @@ class _RowExcluder(_RowSelector):
 Table.take.__doc__ = _RowTaker.__getitem__.__doc__
 Table.exclude.__doc__ = _RowExcluder.__getitem__.__doc__
 
+import matplotlib.patheffects as path_effects
+from IPython.display import  DisplayObject
 
-class PlotMarker:
-    def __init__(self, **kwargs):
-        self.kwargs = kwargs
+global_kwargs = {
+    'clip_on' : False,
+    'zorder' : 30
+}
 
-    def draw(self, ax):
+class Plot(DisplayObject):
+    
+    def __init__(self, ax):
+        self.ax = ax
+    
+    def __enter__(self):
+        global _global_params
+        _global_params['ax'] = self.ax
+        
+    def __exit__(self ,type, value, traceback):
+        global _global_params
+        _global_params['ax'] = None
+        
+    def __eq__(self, other): 
+        if not isinstance(other, Plot):
+            # don't attempt to compare against unrelated types
+            return NotImplemented
+
+        return self.ax == other.ax
+
+    def __hash__(self):
+        return hash(self.ax)
+    
+    def _ipython_display_(self):
+        """Sneaky method to avoid printing any output if this is the result of a cell"""
         pass
+            
+    def line(self, x=None, y=None, color='blue', width=2, linestyle='solid', **kwargs):
+        ax = self.ax
+
+        kws = global_kwargs.copy()
+        kws.update({
+            'clip_on' : True,
+            'lw' : width,
+            'color' : color,
+            'linestyle': linestyle
+        })
+        kws.update(kwargs)
+
+        if x is None and y is None:
+            raise ValueError("Must supply at least one of x and y for line")
+
+        mx,my = ax.margins()
+
+        if x is None:
+            x = ax.get_xlim()
+            w = x[1] - x[0]
+            x = x + np.array([mx * w, -mx * w])
+        elif np.shape(x) == ():
+            x = [ x, x ]
+
+        if y is None:
+            y = ax.get_ylim()
+            w = y[1] - y[0]
+            y = y + np.array([my * w, -my * w])
+        elif np.shape(y) == ():
+            y = [ y, y ]
+
+        ax.plot(x, y, **kws)
+
     
-class Dot(PlotMarker):
-    def __init__(self, x, y, **kwargs):
-        super(Dot,self).__init__(**kwargs)
-        self.x = x
-        self.y = y
+    def interval(self, x, color='yellow', width=10,  **kwargs):
+        ax = self.ax
+
+        if np.shape(x) != (2,):
+            raise ValueError("x must be an array of two numbers")
+        
+        kws = global_kwargs.copy()
+        kws.update({
+            'color' : color,
+            'lw' : width,
+            'solid_capstyle' : 'butt',
+            'path_effects' : [path_effects.SimpleLineShadow(),
+                               path_effects.Normal()]            
+        })
+        kws.update(kwargs)
+
+        y,_ = ax.get_ylim()
+        ax.plot(x, [y,y], **kws)
     
-    def draw(self, ax):
-        self.kwargs.setdefault('s', 30)
-        self.kwargs.setdefault('color', 'red')
-        self.kwargs.setdefault('edgecolor', 'white')
-        ax.scatter(self.x,self.y,**self.kwargs,clip_on=False,zorder=10)
+
+    def dot(self, x=0, y=0, color='red', size=150, **kwargs):
+        ax = self.ax
+
+        kws = global_kwargs.copy()
+        kws.update({
+            's': size,
+            'marker':'o',
+            'c' : color,
+            'edgecolor': 'white',
+            'path_effects' : [path_effects.SimplePatchShadow(),
+                               path_effects.Normal()]            
+        })
+        kws.update(kwargs)
+
+        if np.shape(x) != () and np.shape(y) == ():
+            y = np.full(np.shape(x), y)
+        elif np.shape(y) != () and np.shape(x) == ():
+            x = np.full(np.shape(y), x)
+
+        ax.scatter(x, y, **kws)
+
+        
+    def square(self, x=0, y=0, color='limegreen', size=150, **kwargs):
+        self.dot(x, y, color, size, marker='s', **kwargs)
