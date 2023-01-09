@@ -27,10 +27,11 @@ from datascience.util import make_array
 import datascience.predicates as _predicates
 
 # Our style!
-def prep():
-    import seaborn
-    seaborn.set_theme(context='talk', palette='tab10')
-    return [matplotlib.colors.to_rgba(c) for c in plt.rcParams['axes.prop_cycle'].by_key()['color']]
+# def prep():
+#     pal = [matplotlib.colors.to_rgba(c) for c in plt.rcParams['axes.prop_cycle'].by_key()['color']]
+#     return pal
+
+import seaborn
 
 _global_params = { }
 
@@ -3145,7 +3146,7 @@ class Table(collections.abc.MutableMapping):
     # Visualizations #
     ##################
     
-    default_colors = prep()
+#    default_colors = prep()
 
     default_plot_options = {
         'width': 6,
@@ -3195,9 +3196,12 @@ class Table(collections.abc.MutableMapping):
         args_lists.append(args_last)
         return args_lists
      
-    def _complete_axes(self, ax, title=None, labels=[]):
+    def _complete_axes(self, ax, title=None, labels=[], artists=None):
         if len(labels) > 1:
-            legend = ax.legend(labels, loc=2, title=title, bbox_to_anchor=(1.05, 1))
+            if artists == None:
+                legend = ax.legend(labels, loc=2, title=title, bbox_to_anchor=(1.05, 1))                
+            else:
+                legend = ax.legend(artists, labels, loc=2, title=title, bbox_to_anchor=(1.05, 1))
 
     def plot(self, x_column, y_column=None, **kwargs):
         """Plot line charts for the table. 
@@ -3263,9 +3267,30 @@ class Table(collections.abc.MutableMapping):
         return Plot(ax)
 
 
-
+    def _default_colors(self):
+        return [matplotlib.colors.to_rgba(c) for c in plt.rcParams['axes.prop_cycle'].by_key()['color']]
         
     def _prep_axes(self, y_labels, **kwargs):
+
+#        seaborn.set_theme(context='talk', palette='tab10')
+        seaborn.set_theme(palette='tab10')
+
+        matplotlib.rcParams.update({
+            'axes.labelsize': 16.0,
+            'axes.titlesize': 18.0,
+            'figure.titlesize': 'large',
+            'font.size': 10.0,
+            'legend.fontsize': 16,
+            'legend.title_fontsize': 18.0,
+            'lines.markersize': 9.0,
+            'xtick.labelsize': 14.0,
+            'xtick.major.size': 9.0,
+            'xtick.minor.size': 6.0,
+            'ytick.labelsize': 14.0,
+            'ytick.major.size': 9.0,
+            'ytick.minor.size': 6.0
+        })
+
         
         for label in y_labels:
             if not all(isinstance(x, numbers.Real) for x in self[label]):
@@ -3274,7 +3299,8 @@ class Table(collections.abc.MutableMapping):
                     .format(label))
 
         n = len(y_labels)
-        colors = list(itertools.islice(itertools.cycle(self.default_colors), n))
+
+        colors = list(itertools.islice(itertools.cycle(self._default_colors()), n))
         width = kwargs.pop('width')
         height = kwargs.pop('height')
         
@@ -3293,21 +3319,6 @@ class Table(collections.abc.MutableMapping):
         
         axis_options, plot_options = self.split([self.axis_properties], all_kwargs)
         
-        matplotlib.rcParams.update({
-            'axes.labelsize': 18.0,
-            'axes.titlesize': 18.0,
-            'figure.titlesize': 'large',
-            'font.size': 10.0,
-            'legend.fontsize': 16.5,
-            'legend.title_fontsize': 18.0,
-            'lines.markersize': 9.0,
-            'xtick.labelsize': 16.5,
-            'xtick.major.size': 9.0,
-            'xtick.minor.size': 6.0,
-            'ytick.labelsize': 16.5,
-            'ytick.major.size': 9.0,
-            'ytick.minor.size': 6.0
-        })
         ax.set(**axis_options)
         
 
@@ -3503,33 +3514,72 @@ class Table(collections.abc.MutableMapping):
         def scatter(x_values, y_values, size_values, color):
             opts = plot_options.copy()
             opts.setdefault('color', color)
-            ax.scatter(x_values, y_values, sizes = size_values, **opts)
+            artist = ax.scatter(x_values, y_values, sizes = size_values, **opts)
             if fit_line:
                 m, b = np.polyfit(x_values, y_values, 1)
                 minx, maxx = np.min(x_values),np.max(x_values)
-                ax.plot([minx,maxx],[m*minx+b,m*maxx+b], color = color, lw = 3)
+                ax.plot([minx,maxx],[m*minx+b,m*maxx+b], color = color, lw = 3, label='_skip')
+            return artist
         
         if group is not None:
             if len(y_labels) > 1:
                 raise ValueError("Grouping is not compatible with multiple y columns")
             
             group_values = sorted(np.unique(self.column(group)))
-            colors = list(itertools.islice(itertools.cycle(self.default_colors), len(group_values)))
+            colors = list(itertools.islice(itertools.cycle(self._default_colors()), len(group_values)))
+            legend_artists = []
             for v,c in zip(group_values, colors):
                 group_data = self_with_size.where(group, v)
-                scatter(group_data[x_label], group_data[y_labels[0]], group_data[size_label], c)
+                legend_artists += [ scatter(group_data[x_label], group_data[y_labels[0]], group_data[size_label], c) ]
             legend_labels = group_values
             legend_title = self._as_label(group)
         else:
-            for y_label,c in zip(y_labels, colors):
-                scatter(self_with_size[x_label], self_with_size[y_label], self_with_size[size_label], c)
+            legend_artists = \
+              [ scatter(self_with_size[x_label], self_with_size[y_label], self_with_size[size_label], c) \
+                 for y_label,c in zip(y_labels, colors) ]
             legend_labels = y_labels
-            legend_title = None
-                
+            legend_title = None 
+              
         _vertical_x(ax)                            
-        self._complete_axes(ax, legend_title, legend_labels)
+        self._complete_axes(ax, legend_title, legend_labels, legend_artists)
         return Plot(ax)
+
+    
+#         def scatter(x_values, y_values, size_values, color):
+#             opts = plot_options.copy()
+#             opts.setdefault('color', color)
+#             p = ax.scatter(x_values, y_values, sizes = size_values, **opts)
+#             if fit_line:
+#                 m, b = np.polyfit(x_values, y_values, 1)
+#                 minx, maxx = np.min(x_values),np.max(x_values)
+#                 ax.plot([minx,maxx],[m*minx+b,m*maxx+b], color = color, lw = 3, label='_skip')
+#             return p
         
+#         if group is not None:
+#             if len(y_labels) > 1:
+#                 raise ValueError("Grouping is not compatible with multiple y columns")
+            
+#             group_values = sorted(np.unique(self.column(group)))
+#             colors = list(itertools.islice(itertools.cycle(self._default_colors()), len(group_values)))
+#             for v,c in zip(group_values, colors):
+#                 group_data = self_with_size.where(group, v)
+#                 scatter(group_data[x_label], group_data[y_labels[0]], group_data[size_label], c)
+#             legend_labels = group_values
+#             legend_title = self._as_label(group)
+#         else:
+# #             for y_label,c in zip(y_labels, colors):
+#             legend_artists = \
+#              [ scatter(self_with_size[x_label], self_with_size[y_label], self_with_size[size_label], c) \
+#                  for y_label,c in zip(y_labels, colors) ]
+#             legend_labels = y_labels
+#             legend_title = None 
+#             if len(legend_labels) > 1:
+#                 legend = ax.legend(handles=legend_artists, labels=legend_labels + legend_labels, loc=2, title=legend_title, bbox_to_anchor=(1.05, 1))
+              
+#         _vertical_x(ax)                            
+#         # self._complete_axes(ax, legend_title, legend_labels)
+#         return Plot(ax)
+    
 
         
     def hist(self, *columns, bins=None, group=None, left_end=None, right_end=None, **kwargs):
@@ -3596,7 +3646,7 @@ class Table(collections.abc.MutableMapping):
         if len(columns) > 0:
             labels = self._as_labels(columns)
         else:
-            labels = self.labels
+            labels = list(self.labels)
             
         if group is not None:
             group = self._as_label(group)
@@ -3664,8 +3714,8 @@ class Table(collections.abc.MutableMapping):
                 warnings.warn("It looks like you're making a grouped histogram with "
                               "a lot of groups ({:d}), which is probably incorrect."
                               .format(grouped.num_rows))
-            group_values = grouped.column(_collected_label(np.array, labels[0]))
-            colors = list(itertools.islice(itertools.cycle(self.default_colors), len(group_values)))
+            group_values = list(grouped.column(_collected_label(np.array, labels[0])))
+            colors = list(itertools.islice(itertools.cycle(self._default_colors()), len(group_values)))
             ax.hist(group_values, color=colors, **plot_options)
                 
             legend_labels = grouped.column(group)
@@ -4385,13 +4435,16 @@ from IPython.display import  DisplayObject
 
 global_kwargs = {
     'clip_on' : False,
-    'zorder' : 30
+    'alpha' : 1
 }
 
 class Plot(DisplayObject):
     
-    def __init__(self, ax):
+    def __init__(self, ax = None):
+        if ax == None:
+            _, ax = plt.subplots(figsize=(6, 6))
         self.ax = ax
+        self.zorder = 30
     
     def __enter__(self):
         global _global_params
@@ -4417,9 +4470,11 @@ class Plot(DisplayObject):
             
     def line(self, x=None, y=None, color='blue', width=2, linestyle='solid', **kwargs):
         ax = self.ax
+        self.zorder += 1
 
         kws = global_kwargs.copy()
         kws.update({
+            'zorder' : self.zorder,
             'clip_on' : True,
             'lw' : width,
             'color' : color,
@@ -4449,14 +4504,16 @@ class Plot(DisplayObject):
         ax.plot(x, y, **kws)
 
     
-    def interval(self, x, color='yellow', width=10,  **kwargs):
+    def interval(self, x=0, y=0, color='yellow', width=10,  **kwargs):
         ax = self.ax
+        self.zorder += 1
 
-        if np.shape(x) != (2,):
-            raise ValueError("x must be an array of two numbers")
+        if np.shape(x) != (2,) and np.shape(y) != (2,):
+            raise ValueError("Either x or y must be an array of two numbers to mark an interval")
         
         kws = global_kwargs.copy()
         kws.update({
+            'zorder' : self.zorder,
             'color' : color,
             'lw' : width,
             'solid_capstyle' : 'butt',
@@ -4465,15 +4522,26 @@ class Plot(DisplayObject):
         })
         kws.update(kwargs)
 
-        y,_ = ax.get_ylim()
-        ax.plot(x, [y,y], **kws)
+        if x is None:
+            x = [0, 0]
+        elif np.shape(x) == ():
+            x = [ x, x ]
+            
+        if y is None:
+            y = [0, 0] 
+        elif np.shape(y) == ():
+            y = [ y, y ]
+
+        ax.plot(x, y, **kws)
     
 
     def dot(self, x=0, y=0, color='red', size=150, **kwargs):
         ax = self.ax
+        self.zorder += 1
 
         kws = global_kwargs.copy()
         kws.update({
+            'zorder' : self.zorder,            
             's': size,
             'marker':'o',
             'c' : color,
