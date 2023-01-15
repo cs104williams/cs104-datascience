@@ -253,8 +253,9 @@ class Map(_FoliumWrapper, collections.abc.Mapping):
                     lat_lon in feature.lat_lons]
         if not lat_lons:
             lat_lons.append(self._default_lat_lon)
+            
         for lat_lon in lat_lons:
-            bound_check(lat_lon)
+             bound_check(lat_lon)
 
         return bounds
 
