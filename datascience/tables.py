@@ -1,6 +1,6 @@
 """Tables are sequences of labeled columns."""
 
-__all__ = ['Table', 'Plot' ]
+__all__ = ['Table', 'Plot', 'Figure' ]
 
 import abc
 import collections
@@ -33,7 +33,30 @@ import datascience.predicates as _predicates
 
 import seaborn
 
-_global_params = { }
+
+def set_global_theme():
+    seaborn.set_theme(palette='tab10')
+
+    matplotlib.rcParams.update({
+        'axes.labelsize': 16.0,
+        'axes.titlesize': 18.0,
+        'figure.titlesize': 'large',
+        'font.size': 10.0,
+        'legend.fontsize': 16,
+        'legend.title_fontsize': 18.0,
+        'lines.markersize': 9.0,
+        'xtick.labelsize': 14.0,
+        'xtick.major.size': 9.0,
+        'xtick.minor.size': 6.0,
+        'ytick.labelsize': 14.0,
+        'ytick.major.size': 9.0,
+        'ytick.minor.size': 6.0
+    })
+
+set_global_theme()
+
+_ax_stack = []
+
 
 class Table(collections.abc.MutableMapping):
     """A sequence of string-labeled columns."""
@@ -3272,25 +3295,7 @@ class Table(collections.abc.MutableMapping):
         
     def _prep_axes(self, y_labels, **kwargs):
 
-#        seaborn.set_theme(context='talk', palette='tab10')
-        seaborn.set_theme(palette='tab10')
-
-        matplotlib.rcParams.update({
-            'axes.labelsize': 16.0,
-            'axes.titlesize': 18.0,
-            'figure.titlesize': 'large',
-            'font.size': 10.0,
-            'legend.fontsize': 16,
-            'legend.title_fontsize': 18.0,
-            'lines.markersize': 9.0,
-            'xtick.labelsize': 14.0,
-            'xtick.major.size': 9.0,
-            'xtick.minor.size': 6.0,
-            'ytick.labelsize': 14.0,
-            'ytick.major.size': 9.0,
-            'ytick.minor.size': 6.0
-        })
-
+        set_global_theme()
         
         for label in y_labels:
             if not all(isinstance(x, numbers.Real) for x in self[label]):
@@ -3304,14 +3309,12 @@ class Table(collections.abc.MutableMapping):
         width = kwargs.pop('width')
         height = kwargs.pop('height')
         
-        all_kwargs = _global_params.copy()
-        all_kwargs.update(kwargs)
+        all_kwargs = kwargs.copy()
         
-        ax = all_kwargs.pop('ax', None)
-
-        if ax == None:
+        if len(_ax_stack) == 0:
             _, ax = plt.subplots(figsize=(width, height))
         else:
+            ax = _ax_stack.pop()
             # so legends don't overlap adjacent if we are being given an axis...
             fig = ax.get_figure()
             ax.get_figure().set_tight_layout(True)
@@ -4438,21 +4441,64 @@ global_kwargs = {
     'alpha' : 1
 }
 
+class Figure(DisplayObject):
+    
+    def __init__(self, fig = None):
+        if fig == None:
+            fig, _ = plt.subplots(nrows, ncols, figsize=(6 * ncols, 6 * nrows))
+        self.fig = fig
+        
+    def __enter__(self):
+        global _ax_stack
+        self.old_stack = _ax_stack
+        _ax_stack = _ax_stack + list(reversed(self.fig.axes))
+        
+    def __exit__(self ,type, value, traceback):
+        global _ax_stack
+        _ax_stack = self.old_stack
+        
+    def __eq__(self, other): 
+        if not isinstance(other, Plot):
+            # don't attempt to compare against unrelated types
+            return NotImplemented
+
+        return self.fig == other.fig
+
+    def __hash__(self):
+        return hash(self.fig)
+    
+    def _ipython_display_(self):
+        """Sneaky method to avoid printing any output if this is the result of a cell"""
+        pass
+            
+
+    @staticmethod
+    def grid(nrows = 1, ncols = 1):
+        fig, _ = plt.subplots(nrows, ncols, figsize=(6 * ncols, 6 * nrows))
+        return Figure(fig)
+        
+
 class Plot(DisplayObject):
     
     def __init__(self, ax = None):
+        global _ax_stack
         if ax == None:
-            _, ax = plt.subplots(figsize=(6, 6))
+            if len(_ax_stack) == 0:
+                _, ax = plt.subplots(figsize=(6, 6))
+            else:
+                ax = _ax_stack.pop()
         self.ax = ax
         self.zorder = 30
     
     def __enter__(self):
-        global _global_params
-        _global_params['ax'] = self.ax
+        global _ax_stack
+        self.old_stack = _ax_stack
+        _ax_stack = _ax_stack + [ self.ax ]
+        return self
         
     def __exit__(self ,type, value, traceback):
-        global _global_params
-        _global_params['ax'] = None
+        global _ax_stack
+        _ax_stack = self.old_stack
         
     def __eq__(self, other): 
         if not isinstance(other, Plot):
@@ -4504,13 +4550,10 @@ class Plot(DisplayObject):
         ax.plot(x, y, **kws)
 
     
-    def interval(self, x=0, y=0, color='yellow', width=10,  **kwargs):
+    def interval(self, *x, y = 0, color='yellow', width=10,  **kwargs):
         ax = self.ax
         self.zorder += 1
 
-        if np.shape(x) != (2,) and np.shape(y) != (2,):
-            raise ValueError("Either x or y must be an array of two numbers to mark an interval")
-        
         kws = global_kwargs.copy()
         kws.update({
             'zorder' : self.zorder,
@@ -4522,17 +4565,38 @@ class Plot(DisplayObject):
         })
         kws.update(kwargs)
 
-        if x is None:
-            x = [0, 0]
-        elif np.shape(x) == ():
-            x = [ x, x ]
+        if len(x) == 1:
+            x = x[0]
+            if len(x) != 2:
+                raise ValueError("x must be two numbers to mark an interval")
+        elif len(x) != 2:
+                raise ValueError("you must provide two numbers to mark an interval")
             
-        if y is None:
-            y = [0, 0] 
-        elif np.shape(y) == ():
-            y = [ y, y ]
+        ax.plot(x, [y,y], **kws)
+        
+    def y_interval(self, *y, x = 0, color='yellow', width=10,  **kwargs):
+        ax = self.ax
+        self.zorder += 1
 
-        ax.plot(x, y, **kws)
+        kws = global_kwargs.copy()
+        kws.update({
+            'zorder' : self.zorder,
+            'color' : color,
+            'lw' : width,
+            'solid_capstyle' : 'butt',
+            'path_effects' : [path_effects.SimpleLineShadow(),
+                               path_effects.Normal()]            
+        })
+        kws.update(kwargs)
+
+        if len(y) == 1:
+            y = y[0]
+            if len(y) != 2:
+                raise ValueError("y must be two numbers to mark a y-interval")
+        elif len(y) != 2:
+                raise ValueError("you must provide two numbers to mark a y-interval")
+            
+        ax.plot([x, x], y, **kws)
     
 
     def dot(self, x=0, y=0, color='red', size=150, **kwargs):
