@@ -4470,7 +4470,6 @@ class Figure(DisplayObject):
     def _ipython_display_(self):
         """Sneaky method to avoid printing any output if this is the result of a cell"""
         pass
-            
 
     @staticmethod
     def grid(nrows = 1, ncols = 1):
@@ -4514,6 +4513,35 @@ class Plot(DisplayObject):
         """Sneaky method to avoid printing any output if this is the result of a cell"""
         pass
             
+            
+    def set_title(self, v):
+        self.ax.set_title(v)
+        return self
+
+    def set_xlabel(self, v):
+        self.ax.set_xlabel(v)
+        return self
+
+    def set_xlim(self, v):
+        self.ax.set_xlim(v)
+        return self
+
+    def set_xscale(self, v):
+        self.ax.set_xscale(v)
+        return self
+
+    def set_ylabel(self, v):
+        self.ax.set_ylabel(v)
+        return self
+
+    def set_ylim(self, v):
+        self.ax.set_ylim(v)
+        return self
+
+    def set_yscale(self, v):
+        self.ax.set_yscale(v)
+        return self
+
     def line(self, x=None, y=None, color='blue', width=2, linestyle='solid', **kwargs):
         ax = self.ax
         self.zorder += 1
