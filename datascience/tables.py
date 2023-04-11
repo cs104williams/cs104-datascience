@@ -2770,6 +2770,102 @@ class Table(collections.abc.MutableMapping):
             table[col] = self[col]
         return table
 
+    
+    
+    ##########################
+    # Cleaning               #
+    ##########################
+    
+    
+    def _clean_for_column(self, column_name, expected_type):
+        """Given a table, and column name, and the type of data you expect
+           in that column (eg: str, int, or float), this function returns
+           a new copy of the table with the following changes:
+
+             - Any rows with missing values in the given column are removed.
+             - Any rows with values in the given column that are not of the 
+               expected type are removed.
+
+            Returns a new table and also a table with the removed rows
+        """
+
+        def has_type(T):
+            """Return a function that indicates whether value can be converted
+               to the type T."""
+            def is_convertible(v):
+                try:
+                    T(v)
+                    return True
+                except ValueError:
+                    return False
+
+            if T == str:
+                return lambda x: True
+            elif T == int:
+                return lambda x: type(x) == int or is_convertible(x) and float(x) == int(x)
+            elif T == float:
+                return lambda x: is_convertible(x)
+        
+        # Remove rows w/ nans.  Columns with floats are treated different, since nans are 
+        #  converted in np.nan when a floating point column is created in read_table.
+        if (self.column(column_name).dtype == np.float64):
+            new_table = self.where(column_name, lambda x: not np.isnan(x))
+            removed_rows = self.where(column_name, lambda x: np.isnan(x))
+        else:
+            new_table = self.where(column_name, _predicates.are.not_equal_to('nan'))
+            removed_rows = self.where(column_name, _predicates.are.equal_to('nan'))
+
+        # Remove rows w/ values that cannot be converted to the expected type.
+        removed_rows.append(new_table.where(column_name, lambda x: not has_type(expected_type)(x)))
+        new_table = new_table.where(column_name, has_type(expected_type))
+
+        # Make sure all rows have values of the expected type.  (eg: convert str's to int's for an
+        #   int column.)
+        new_table = new_table.with_column(column_name, new_table.apply(expected_type, column_name))
+
+        return new_table, removed_rows
+
+    def _clean_for_columns(self, *labels_and_types):
+
+        if len(labels_and_types) == 1:
+            labels_and_types = labels_and_types[0]
+        if isinstance(labels_and_types, collections.abc.Mapping):
+            labels_and_types = list(labels_and_types.items())
+        if not isinstance(labels_and_types, collections.abc.Sequence):
+            labels_and_types = list(labels_and_types)
+        if not labels_and_types:
+            return self
+        first = labels_and_types[0]
+
+        if not isinstance(first, str) and hasattr(first, '__iter__'):
+            for pair in labels_and_types:
+                if len(pair) != 2:
+                    raise ValueError('incorrect columns format -- should be a list alternating labels and types')
+            labels_and_types = [x for pair in labels_and_types for x in pair]
+
+        if len(labels_and_types) % 2 != 0:
+            raise ValueError('incorrect columns format -- should be a list alternating labels and types')
+
+        kept = self.copy()
+        removed = Table(kept.labels)
+        for i in range(0, len(labels_and_types), 2):
+            label, expected_type = labels_and_types[i], labels_and_types[i+1]
+            kept, dropped = kept._clean_for_column(label, expected_type)
+            removed.append(dropped)
+
+        return (kept, removed)
+
+    
+    def take_clean(self, *labels_and_types):
+        clean, dirty = self._clean_for_columns(*labels_and_types)
+        return clean
+
+    def take_dirty(self, *labels_and_types):
+        clean, dirty = self._clean_for_columns(*labels_and_types)
+        return dirty
+
+
+    
     ##########################
     # Exporting / Displaying #
     ##########################
@@ -4593,11 +4689,9 @@ class Plot(DisplayObject):
         })
         kws.update(kwargs)
 
-        if len(x) == 1:
+        if np.shape(x) == (1,2):
             x = x[0]
-            if len(x) != 2:
-                raise ValueError("x must be two numbers to mark an interval")
-        elif len(x) != 2:
+        elif np.shape(x) != (2,):
                 raise ValueError("you must provide two numbers to mark an interval")
             
         ax.plot(x, [y,y], **kws)
@@ -4617,12 +4711,10 @@ class Plot(DisplayObject):
         })
         kws.update(kwargs)
 
-        if len(y) == 1:
+        if np.shape(y) == (1,2):
             y = y[0]
-            if len(y) != 2:
-                raise ValueError("y must be two numbers to mark a y-interval")
-        elif len(y) != 2:
-                raise ValueError("you must provide two numbers to mark a y-interval")
+        elif np.shape(y) != (2,):
+                raise ValueError("you must provide two numbers to mark an interval")
             
         ax.plot([x, x], y, **kws)
     
