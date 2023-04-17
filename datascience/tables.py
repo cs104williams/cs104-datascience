@@ -59,6 +59,7 @@ _ax_stack = []
 
 
 class Table(collections.abc.MutableMapping):
+    
     """A sequence of string-labeled columns."""
     plots = collections.deque(maxlen=10)
 
@@ -2857,12 +2858,12 @@ class Table(collections.abc.MutableMapping):
 
     
     def take_clean(self, *labels_and_types):
-        clean, dirty = self._clean_for_columns(*labels_and_types)
+        clean, messy = self._clean_for_columns(*labels_and_types)
         return clean
 
-    def take_dirty(self, *labels_and_types):
-        clean, dirty = self._clean_for_columns(*labels_and_types)
-        return dirty
+    def take_messy(self, *labels_and_types):
+        clean, messy = self._clean_for_columns(*labels_and_types)
+        return messy
 
 
     
