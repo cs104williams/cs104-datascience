@@ -44,19 +44,13 @@ class PyTest(TestCommand):
 
 
 setup(
-    name = 'datascience',
+    name = 'cs104-datascience',
     packages = ['datascience'],
     version = version,
     install_requires = install_requires,
     tests_require = tests_requires,
     cmdclass = {'test': PyTest},
-    description = 'A Jupyter notebook Python library for introductory data science',
-    long_description = 'A Jupyter notebook Python library for introductory data science',
-    author = 'John DeNero, David Culler, Alvin Wan, Sam Lau',
-    author_email = 'ds8-instructors@berkeley.edu',
-    url = 'https://github.com/data-8/datascience',
-    download_url = 'https://github.com/data-8/datascience/archive/%s.zip' % version,
-    keywords = ['data', 'tools', 'berkeley'],
+    description = 'A Jupyter notebook Python library for introductory data science.  CS 104 version!',
     classifiers = [],
     package_data={"datascience": ["geodata/*.csv"]}
 )
