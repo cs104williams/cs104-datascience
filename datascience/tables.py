@@ -4291,16 +4291,6 @@ class Plot(DisplayObject):
         """Sneaky method to avoid printing any output if this is the result of a cell"""
         pass
 
-        'clip_on',
-        'title',
-        'xlabel',
-        'xlim',
-        'xscale',
-        'ylabel',
-        'ylim',
-        'yscale'
-
-
     def set(self, property, v):
         if property in Table.axis_properties:
             self.ax.set(property, v)
