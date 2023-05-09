@@ -4301,6 +4301,10 @@ class Plot(DisplayObject):
         return self
 
     def set_xlim(self, v):
+        if len(v) == 2:
+            v = make_array(v[0], v[1])
+        else:
+            v = v[0]
         self.ax.set_xlim(v)
         return self
 
@@ -4312,7 +4316,11 @@ class Plot(DisplayObject):
         self.ax.set_ylabel(v)
         return self
 
-    def set_ylim(self, v):
+    def set_ylim(self, *v):
+        if len(v) == 2:
+            v = make_array(v[0], v[1])
+        else:
+            v = v[0]
         self.ax.set_ylim(v)
         return self
 
