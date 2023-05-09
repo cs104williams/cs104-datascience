@@ -44,7 +44,7 @@ class PyTest(TestCommand):
 
 
 setup(
-    name = 'cs104-datascience',
+    name = 'datascience',
     packages = ['datascience'],
     version = version,
     install_requires = install_requires,

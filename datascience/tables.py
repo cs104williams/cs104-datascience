@@ -1,6 +1,6 @@
 """Tables are sequences of labeled columns."""
 
-__all__ = ['Table', 'Plot', 'Figure' ]
+__all__ = [ 'Table', 'Plot', 'Figure' ]
 
 import abc
 import collections
@@ -25,11 +25,6 @@ import datascience.formats as _formats
 import datascience.util as _util
 from datascience.util import make_array
 import datascience.predicates as _predicates
-
-# Our style!
-# def prep():
-#     pal = [matplotlib.colors.to_rgba(c) for c in plt.rcParams['axes.prop_cycle'].by_key()['color']]
-#     return pal
 
 import seaborn
 
@@ -3266,8 +3261,6 @@ class Table(collections.abc.MutableMapping):
     # Visualizations #
     ##################
     
-#    default_colors = prep()
-
     default_plot_options = {
         'width': 6,
         'height': 6,
@@ -3643,42 +3636,6 @@ class Table(collections.abc.MutableMapping):
         _vertical_x(ax)                            
         self._complete_axes(ax, legend_title, legend_labels, legend_artists)
         return Plot(ax)
-
-    
-#         def scatter(x_values, y_values, size_values, color):
-#             opts = plot_options.copy()
-#             opts.setdefault('color', color)
-#             p = ax.scatter(x_values, y_values, sizes = size_values, **opts)
-#             if fit_line:
-#                 m, b = np.polyfit(x_values, y_values, 1)
-#                 minx, maxx = np.min(x_values),np.max(x_values)
-#                 ax.plot([minx,maxx],[m*minx+b,m*maxx+b], color = color, lw = 3, label='_skip')
-#             return p
-        
-#         if group is not None:
-#             if len(y_labels) > 1:
-#                 raise ValueError("Grouping is not compatible with multiple y columns")
-            
-#             group_values = sorted(np.unique(self.column(group)))
-#             colors = list(itertools.islice(itertools.cycle(self._default_colors()), len(group_values)))
-#             for v,c in zip(group_values, colors):
-#                 group_data = self_with_size.where(group, v)
-#                 scatter(group_data[x_label], group_data[y_labels[0]], group_data[size_label], c)
-#             legend_labels = group_values
-#             legend_title = self._as_label(group)
-#         else:
-# #             for y_label,c in zip(y_labels, colors):
-#             legend_artists = \
-#              [ scatter(self_with_size[x_label], self_with_size[y_label], self_with_size[size_label], c) \
-#                  for y_label,c in zip(y_labels, colors) ]
-#             legend_labels = y_labels
-#             legend_title = None 
-#             if len(legend_labels) > 1:
-#                 legend = ax.legend(handles=legend_artists, labels=legend_labels + legend_labels, loc=2, title=legend_title, bbox_to_anchor=(1.05, 1))
-              
-#         _vertical_x(ax)                            
-#         # self._complete_axes(ax, legend_title, legend_labels)
-#         return Plot(ax)
     
 
         
@@ -3846,285 +3803,6 @@ class Table(collections.abc.MutableMapping):
         column = None if column_or_label is None else self._get_column(column_or_label)
         labels = [label for i, label in enumerate(self.labels) if column_or_label not in (i, label)]
         return column, labels
-
-
-
-#     def hist(self, *columns, overlay=True, bins=None, bin_column=None, unit=None, counts=None, group=None,
-#         rug=False, side_by_side=False, left_end=None, right_end=None, width=None, height=None, **vargs):
-#         """Plots one histogram for each column in columns. If no column is
-#         specified, plot all columns. If interactive plots are enabled via ``Table#interactive_plots``,
-#         redirects plotting to plotly with ``Table#ihist``.
-
-#         Kwargs:
-#             overlay (bool): If True, plots 1 chart with all the histograms
-#                 overlaid on top of each other (instead of the default behavior
-#                 of one histogram for each column in the table). Also adds a
-#                 legend that matches each bar color to its column.  Note that
-#                 if the histograms are not overlaid, they are not forced to the
-#                 same scale.
-
-#             bins (list or int): Lower bound for each bin in the
-#                 histogram or number of bins. If None, bins will
-#                 be chosen automatically.
-
-#             bin_column (column name or index): A column of bin lower bounds.
-#                 All other columns are treated as counts of these bins.
-#                 If None, each value in each row is assigned a count of 1.
-
-#             counts (column name or index): Deprecated name for bin_column.
-
-#             unit (string): A name for the units of the plotted column (e.g.
-#                 'kg'), to be used in the plot.
-
-#             group (column name or index): A column of categories.  The rows are
-#                 grouped by the values in this column, and a separate histogram is
-#                 generated for each group.  The histograms are overlaid or plotted
-#                 separately depending on the overlay argument.  If None, no such
-#                 grouping is done.
-
-#             side_by_side (bool): Whether histogram bins should be plotted side by
-#                 side (instead of directly overlaid).  Makes sense only when
-#                 plotting multiple histograms, either by passing several columns
-#                 or by using the group option.
-
-#             left_end (int or float) and right_end (int or float): (Not supported
-#                 for overlayed histograms) The left and right edges of the shading of
-#                 the histogram. If only one of these is None, then that property
-#                 will be treated as the extreme edge of the histogram. If both are
-#                 left None, then no shading will occur.
-
-#             density (boolean): If True, will plot a density distribution of the data.
-#                 Otherwise plots the counts.
-
-#             shade_split (string, {"whole", "new", "split"}): If left_end or
-#                 right_end are specified, shade_split determines how a bin is split
-#                 that the end falls between two bin endpoints. If shade_split = "whole",
-#                 the entire bin will be shaded. If shade_split = "new", then a new bin
-#                 will be created and data split appropriately. If shade_split = "split",
-#                 the data will first be placed into the original bins, and then separated
-#                 into two bins with equal height.
-
-#             show (bool): whether to show the figure for interactive plots; if false, the figure is 
-#                 returned instead
-
-
-#             vargs: Additional arguments that get passed into :func:plt.hist.
-#                 See http://matplotlib.org/api/pyplot_api.html#matplotlib.pyplot.hist
-#                 for additional arguments that can be passed into vargs. These
-#                 include: `range`, `normed`/`density`, `cumulative`, and
-#                 `orientation`, to name a few.
-
-#         >>> t = Table().with_columns(
-#         ...     'count',  make_array(9, 3, 3, 1),
-#         ...     'points', make_array(1, 2, 2, 10))
-#         >>> t
-#         count | points
-#         9     | 1
-#         3     | 2
-#         3     | 2
-#         1     | 10
-#         >>> t.hist() # doctest: +SKIP
-#         <histogram of values in count>
-#         <histogram of values in points>
-
-#         >>> t = Table().with_columns(
-#         ...     'value',      make_array(101, 102, 103),
-#         ...     'proportion', make_array(0.25, 0.5, 0.25))
-#         >>> t.hist(bin_column='value') # doctest: +SKIP
-#         <histogram of values weighted by corresponding proportions>
-
-#         >>> t = Table().with_columns(
-#         ...     'value',    make_array(1,   2,   3,   2,   5  ),
-#         ...     'category', make_array('a', 'a', 'a', 'b', 'b'))
-#         >>> t.hist('value', group='category') # doctest: +SKIP
-#         <two overlaid histograms of the data [1, 2, 3] and [2, 5]>
-#         """
-#         # Matplotlib has deprecated the normed keyword.
-#         # TODO consider changing this function to use density= instead too
-#         if 'normed' not in vargs and 'density' not in vargs:
-#             vargs['density'] = True
-#         elif 'normed' in vargs and 'density' not in vargs:
-#             vargs['density'] = vargs.pop('normed')
-#         elif 'normed' in vargs and 'density' in vargs:
-#             raise ValueError("You can't specify both normed and density. "
-#                              "Use one or the other.")
-
-
-#         if width is None:
-#             width = self.default_width
-
-#         if height is None:
-#             height = self.default_height
-
-# #         vis_options = {  } 
-# #         options = vargs.copy()
-# #         if 'ax' in options:
-# #             ax = options.pop('ax')
-# #             for key in ax.properties().keys():
-# #                 if key in options:
-# #                     vis_options[key] = options.pop(key)
-# #         else:
-# #             ax = None            
-            
-#         if counts is not None and bin_column is None:
-#             warnings.warn("counts arg of hist is deprecated; use bin_column")
-#             bin_column=counts
-#         if columns:
-#             columns_included = list(columns)
-#             if bin_column is not None:
-#                 columns_included.append(bin_column)
-#             if group is not None:
-#                 columns_included.append(group)
-#             self = self.select(*columns_included)
-#         if group is not None:
-#             if bin_column is not None:
-#                 raise ValueError("Using bin_column and group together is "
-#                                  "currently unsupported.")
-#             if len(columns) > 1:
-#                 raise ValueError("Using group with multiple histogram value "
-#                                  "columns is currently unsupported.")
-
-#         # Check for non-numerical values and raise a ValueError if any found
-#         for col in self:
-#             if col != group and any(isinstance(cell, np.flexible) for cell in self[col]):
-#                 raise ValueError("The column '{0}' contains non-numerical "
-#                     "values. A histogram cannot be drawn for this table."
-#                     .format(col))
-
-
-#         if bin_column is not None and bins is None:
-#             bins = np.unique(self.column(bin_column))
-#         if bins is not None:
-#             vargs['bins'] = bins
-
-#         def prepare_hist_with_bin_column(bin_column):
-#             # This code is factored as a function for clarity only.
-#             weight_columns = [c for c in self.labels if c != bin_column]
-#             bin_values = self.column(bin_column)
-#             values_dict = [(w[:-6] if w.endswith(' count') else w, (bin_values, self.column(w))) \
-#                 for w in weight_columns]
-#             return values_dict
-
-#         def prepare_hist_with_group(group):
-#             # This code is factored as a function for clarity only.
-#             grouped = self.group(group, np.array)
-#             if grouped.num_rows > 20:
-#                 warnings.warn("It looks like you're making a grouped histogram with "
-#                               "a lot of groups ({:d}), which is probably incorrect."
-#                               .format(grouped.num_rows))
-#             return [("{}={}".format(group, k), (v[0][1],)) for k, v in grouped.index_by(group).items()]
-
-#         # Populate values_dict: An ordered dict from column name to singleton
-#         # tuple of array of values or a (values, weights) pair of arrays.  If
-#         # any values have weights, they all must have weights.
-#         if bin_column is not None:
-#             values_dict = prepare_hist_with_bin_column(bin_column)
-#         elif group is not None:
-#             values_dict = prepare_hist_with_group(group)
-#         else:
-#             values_dict = [(k, (self.column(k),)) for k in self.labels]
-#         values_dict = collections.OrderedDict(values_dict)
-#         if left_end is not None or right_end is not None:
-#             if left_end is None:
-#                 if bins is not None and bins[0]:
-#                     left_end = bins[0]
-#                 else:
-#                     left_end = min([min(self.column(k)) for k in self.labels if np.issubdtype(self.column(k).dtype, np.number)])
-#             elif right_end is None:
-#                 if bins is not None and bins[-1]:
-#                     right_end = bins[-1]
-#                 else:
-#                     right_end = max([max(self.column(k)) for k in self.labels if np.issubdtype(self.column(k).dtype, np.number)])
-
-#         def draw_hist(values_dict):
-#             # Check if np.printoptions is set to legacy. Throw UserWarning if not
-#             if np.get_printoptions()['legacy'] != '1.13':
-#                 warnings.warn("We've detected you're not using the '1.13' legacy setting for `np.printoptions`. "
-#                     "This may cause excessive error terms in your plots. We recommend solving this by running the "
-#                     "following code: `np.set_printoptions(legacy='1.13')`", UserWarning)
-#             # This code is factored as a function for clarity only.
-#             n = len(values_dict)
-#             colors = [rgb_color + (self.default_alpha,) for rgb_color in
-#                 itertools.islice(itertools.cycle(self.chart_colors), n)]
-#             hist_names = list(values_dict.keys())
-#             values = [v[0] for v in values_dict.values()]
-#             weights = [v[1] for v in values_dict.values() if len(v) > 1]
-#             if n > len(weights) > 0:
-#                 raise ValueError("Weights were provided for some columns, but not "
-#                                  " all, and that's not supported.")
-#             if rug and overlay and n > 1:
-#                 warnings.warn("Cannot plot overlaid rug plots; rug=True ignored", UserWarning)
-#             if vargs['density']:
-#                 y_label = 'Percent per ' + (unit if unit else 'unit')
-#                 percentage = plt.FuncFormatter(lambda x, _: "{:g}".format(100*x))
-#             else:
-#                 y_label = 'Count'
-
-#             if overlay and n > 1:
-#                 # Reverse because legend prints bottom-to-top
-#                 values = values[::-1]
-#                 weights = weights[::-1]
-#                 colors = list(colors)[::-1]
-#                 if len(weights) == n:
-#                     vargs['weights'] = weights
-#                 if not side_by_side:
-#                     vargs.setdefault('histtype', 'stepfilled')
-#                 if 'ax' in vargs:
-#                     axis = vargs.pop('ax')
-#                     axis.hist(values, color=colors, **vargs)
-#                 else:
-#                     figure = plt.figure(figsize=(width, height))
-#                     plt.hist(values, color=colors, **vargs)
-#                     axis = figure.get_axes()[0]
-                    
-#                 _vertical_x(axis)
-#                 axis.set_ylabel(y_label)
-#                 if vargs['density']:
-#                     axis.yaxis.set_major_formatter(percentage)
-#                 x_unit = ' (' + unit + ')' if unit else ''
-#                 if group is not None and len(self.labels) == 2:
-#                     #There's a grouping in place but we're only plotting one column's values
-#                     label_not_grouped = [l for l in self.labels if l != group][0]
-#                     axis.set_xlabel(label_not_grouped + x_unit, fontsize=16)
-#                 else:
-#                     axis.set_xlabel(x_unit, fontsize=16)
-#                 plt.legend(hist_names, loc=2, bbox_to_anchor=(1.05, 1))
-#                 type(self).plots.append(axis)
-#             else:
-#                 if 'ax' in vargs:
-#                     assert n == 1
-#                     axis = vargs.pop('ax')
-#                     axes = [axis]
-#                 else:
-#                     _, axes = plt.subplots(n, 1, figsize=(width, height * n))
-#                     if n == 1:
-#                         axes = [axes]
-
-#                 if 'bins' in vargs:
-#                     bins = vargs['bins']
-#                     if isinstance(bins, numbers.Integral) and bins > 76 or hasattr(bins, '__len__') and len(bins) > 76:
-#                         # Use stepfilled when there are too many bins
-#                         vargs.setdefault('histtype', 'stepfilled')
-#                 for i, (axis, hist_name, values_for_hist, color) in enumerate(zip(axes, hist_names, values, colors)):
-#                     axis.set_ylabel(y_label)
-#                     if vargs['density']:
-#                         axis.yaxis.set_major_formatter(percentage)
-#                     x_unit = ' (' + unit + ')' if unit else ''
-#                     if len(weights) == n:
-#                         vargs['weights'] = weights[i]
-#                     axis.set_xlabel(hist_name + x_unit, fontsize=16)
-#                     heights, bins, patches = axis.hist(values_for_hist, color=color, **vargs)
-#                     if left_end is not None and right_end is not None:
-#                         x_shade, height_shade, width_shade = _compute_shading(heights, bins.copy(), left_end, right_end)
-#                         axis.bar(x_shade, height_shade, width=width_shade,
-#                                  color=(253/256, 204/256, 9/256), align="edge")
-#                     _vertical_x(axis)
-#                     if rug:
-#                         axis.scatter(values_for_hist, np.zeros_like(values_for_hist), marker="|",
-#                                      color="black", s=100, zorder=10)
-#                     type(self).plots.append(axis)
-
-#         draw_hist(values_dict)
 
 
     def boxplot(self, **vargs):
@@ -4530,6 +4208,9 @@ class _RowExcluder(_RowSelector):
 Table.take.__doc__ = _RowTaker.__getitem__.__doc__
 Table.exclude.__doc__ = _RowExcluder.__getitem__.__doc__
 
+
+### Graph annotations ###
+
 import matplotlib.patheffects as path_effects
 from IPython.display import  DisplayObject
 
@@ -4542,7 +4223,7 @@ class Figure(DisplayObject):
     
     def __init__(self, fig = None):
         if fig == None:
-            fig, _ = plt.subplots(nrows, ncols, figsize=(6 * ncols, 6 * nrows))
+            fig, _ = plt.subplots(1, 1, figsize=(6, 6))
         self.fig = fig
         
     def __enter__(self):
@@ -4636,6 +4317,10 @@ class Plot(DisplayObject):
         return self
 
     def set_xlim(self, v):
+        if len(v) == 2:
+            v = make_array(v[0], v[1])
+        else:
+            v = v[0]
         self.ax.set_xlim(v)
         return self
 
@@ -4647,7 +4332,11 @@ class Plot(DisplayObject):
         self.ax.set_ylabel(v)
         return self
 
-    def set_ylim(self, v):
+    def set_ylim(self, *v):
+        if len(v) == 2:
+            v = make_array(v[0], v[1])
+        else:
+            v = v[0]
         self.ax.set_ylim(v)
         return self
 
