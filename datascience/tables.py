@@ -4609,7 +4609,23 @@ class Plot(DisplayObject):
     def _ipython_display_(self):
         """Sneaky method to avoid printing any output if this is the result of a cell"""
         pass
-            
+
+        'clip_on',
+        'title',
+        'xlabel',
+        'xlim',
+        'xscale',
+        'ylabel',
+        'ylim',
+        'yscale'
+
+
+    def set(self, property, v):
+        if property in Table.axis_properties:
+            self.ax.set(property, v)
+            return self
+        else:
+            ValueError(f"Can only set these properties for plots: {Table.axis_properties}")
             
     def set_title(self, v):
         self.ax.set_title(v)
