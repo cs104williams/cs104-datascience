@@ -4346,23 +4346,35 @@ class Plot(DisplayObject):
         if x is None and y is None:
             raise ValueError("Must supply at least one of x and y for line")
 
-        mx,my = ax.margins()
-
-        if x is None:
-            x = ax.get_xlim()
-            w = x[1] - x[0]
-            x = x + np.array([mx * w, -mx * w])
-        elif np.shape(x) == ():
-            x = [ x, x ]
-
         if y is None:
-            y = ax.get_ylim()
-            w = y[1] - y[0]
-            y = y + np.array([my * w, -my * w])
-        elif np.shape(y) == ():
-            y = [ y, y ]
+            ax.axvline(x, **kws)
+        elif x is None:
+            ax.axhline(y, **kws)
+        else:
+            if np.shape(x) == ():
+                x = [ x, x ]
+            if np.shape(y) == ():
+                y = [ y, y ]
+            ax.axline(x, y, **kws)
 
-        ax.plot(x, y, **kws)
+        # mx,my = ax.margins()
+
+        # if x is None:
+        #     x = ax.get_xlim()
+        #     w = x[1] - x[0]
+        #     x = x + np.array([mx * w, -mx * w])
+        # elif np.shape(x) == ():
+        #     x = [ x, x ]
+
+        # if y is None:
+        #     y = ax.get_ylim()
+        #     w = y[1] - y[0]
+        #     print(y)
+        #     y = y + np.array([my * w, -my * w])
+        # elif np.shape(y) == ():
+        #     y = [ y, y ]
+
+        # ax.plot(x, y, **kws)
 
     
     def interval(self, *x, y = 0, color='yellow', width=10,  **kwargs):
