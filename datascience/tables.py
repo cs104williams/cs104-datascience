@@ -3419,7 +3419,7 @@ class Table(collections.abc.MutableMapping):
         return ax, colors, plot_options
 
 
-    def barh(self, column_for_categories, select=None, legend=True **kwargs):
+    def barh(self, column_for_categories, select=None, legend=True, **kwargs):
         """Plot horizontal bar charts for the table.``
         
         Args:
@@ -4245,13 +4245,19 @@ class Figure(DisplayObject):
         pass
 
     @staticmethod
-    def grid(nrows = 1, ncols = 1):
-        fig, _ = plt.subplots(nrows, ncols, figsize=(6 * ncols, 6 * nrows))
+    def grid(nrows = 1, ncols = 1, figsize=(6, 6)):
+        fig, _ = plt.subplots(nrows, ncols, figsize=(figsize[0] * ncols, figsize[1] * nrows))
         return Figure(fig)
         
 
 class Plot(DisplayObject):
-    
+
+    @staticmethod
+    def grid(nrows = 1, ncols = 1, figsize=(6, 6)):
+        fig, _ = plt.subplots(nrows, ncols, figsize=(figsize[0] * ncols, figsize[1] * nrows))
+        global _ax_stack
+        _ax_stack = _ax_stack + list(reversed(fig.axes))
+
     def __init__(self, ax = None):
         global _ax_stack
         if ax == None:
@@ -4356,26 +4362,6 @@ class Plot(DisplayObject):
             if np.shape(y) == ():
                 y = [ y, y ]
             ax.axline(x, y, **kws)
-
-        # mx,my = ax.margins()
-
-        # if x is None:
-        #     x = ax.get_xlim()
-        #     w = x[1] - x[0]
-        #     x = x + np.array([mx * w, -mx * w])
-        # elif np.shape(x) == ():
-        #     x = [ x, x ]
-
-        # if y is None:
-        #     y = ax.get_ylim()
-        #     w = y[1] - y[0]
-        #     print(y)
-        #     y = y + np.array([my * w, -my * w])
-        # elif np.shape(y) == ():
-        #     y = [ y, y ]
-
-        # ax.plot(x, y, **kws)
-
     
     def interval(self, *x, y = 0, color='yellow', width=10,  **kwargs):
         ax = self.ax
