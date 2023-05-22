@@ -3316,7 +3316,7 @@ class Table(collections.abc.MutableMapping):
             else:
                 legend = ax.legend(artists, labels, loc=2, title=title, bbox_to_anchor=(1.05, 1))
 
-    def plot(self, x_column, y_column=None, **kwargs):
+    def plot(self, x_column, y_column=None, legend=True, **kwargs):
         """Plot line charts for the table. 
         
         Args:
@@ -3376,7 +3376,8 @@ class Table(collections.abc.MutableMapping):
 
         _vertical_x(ax)
         
-        self._complete_axes(ax, labels=y_labels)
+        if legend:
+            self._complete_axes(ax, labels=y_labels)
         return Plot(ax)
 
 
@@ -3418,7 +3419,7 @@ class Table(collections.abc.MutableMapping):
         return ax, colors, plot_options
 
 
-    def barh(self, column_for_categories, select=None, **kwargs):
+    def barh(self, column_for_categories, select=None, legend=True, **kwargs):
         """Plot horizontal bar charts for the table.``
         
         Args:
@@ -3498,14 +3499,15 @@ class Table(collections.abc.MutableMapping):
         ax.set_yticks(index+0.5) # Center labels on bars
         # barh plots entries in reverse order from bottom to top
         ax.set_yticklabels(yticks[::-1], stretch='ultra-condensed')      
-
-        self._complete_axes(ax, labels=labels)
+ 
+        if legend:
+            self._complete_axes(ax, labels=labels)
         return Plot(ax)
         
         
         
 
-    def scatter(self, x_column, y_column=None, fit_line=False, group=None, sizes=None, **kwargs):
+    def scatter(self, x_column, y_column=None, fit_line=False, group=None, sizes=None, legend=True, **kwargs):
         """Creates scatterplots, optionally adding a line of best fit. Redirects to ``Table#iscatter``
         if interactive plots are enabled with ``Table#interactive_plots``
 
@@ -3513,33 +3515,24 @@ class Table(collections.abc.MutableMapping):
             ``column_for_x`` (``str``): the column to use for the x-axis values
                 and label of the scatter plots.
 
-        kwargs:
-            ``overlay`` (``bool``): if true, creates a chart with one color
-                per data column; if false, each plot will be displayed separately.
-
             ``fit_line`` (``bool``): draw a line of best fit for each set of points.
+
+            ``group``: a column of categories to be used for coloring dots per
+                each category grouping.
+
+            ``sizes``:  a column of values to set the relative areas of dots.
+
+            ``legend``: whether to show the legend
+
+        kwargs:
 
             ``vargs``: additional arguments that get passed into `plt.scatter`.
                 see http://matplotlib.org/api/pyplot_api.html#matplotlib.pyplot.scatter
                 for additional arguments that can be passed into vargs. these
                 include: `marker` and `norm`, to name a couple.
 
-            ``group``: a column of categories to be used for coloring dots per
-                each category grouping.
-
-            ``labels``: a column of text labels to annotate dots.
-
-            ``sizes``:  a column of values to set the relative areas of dots.
-
             ``s``: size of dots. if sizes is also provided, then dots will be
                 in the range 0 to 2 * s.
-
-            ``colors``: (deprecated) A synonym for ``group``. Retained
-                temporarily for backwards compatibility. This argument
-                will be removed in future releases.
-
-            ``show`` (``bool``): whether to show the figure if using interactive plots; if false, 
-                the figure is returned instead
 
         Raises:
             ValueError -- Every column, ``column_for_x`` or ``select``, must be numerical
@@ -3634,12 +3627,13 @@ class Table(collections.abc.MutableMapping):
             legend_title = None 
               
         _vertical_x(ax)                            
-        self._complete_axes(ax, legend_title, legend_labels, legend_artists)
+        if legend:
+            self._complete_axes(ax, legend_title, legend_labels, legend_artists)
         return Plot(ax)
     
 
         
-    def hist(self, *columns, bins=None, group=None, left_end=None, right_end=None, **kwargs):
+    def hist(self, *columns, bins=None, group=None, left_end=None, right_end=None, legend=True, **kwargs):
         """Plots one histogram for each column in columns. If no column is
         specified, plot all columns.
 
@@ -3793,7 +3787,8 @@ class Table(collections.abc.MutableMapping):
             legend_labels = labels
             legend_title = None
                 
-        self._complete_axes(ax, legend_title, legend_labels[::-1])
+        if legend:
+            self._complete_axes(ax, legend_title, legend_labels[::-1])
         return Plot(ax)
 
     def _split_column_and_labels(self, column_or_label):
@@ -4250,13 +4245,19 @@ class Figure(DisplayObject):
         pass
 
     @staticmethod
-    def grid(nrows = 1, ncols = 1):
-        fig, _ = plt.subplots(nrows, ncols, figsize=(6 * ncols, 6 * nrows))
+    def grid(nrows = 1, ncols = 1, figsize=(6, 6)):
+        fig, _ = plt.subplots(nrows, ncols, figsize=(figsize[0] * ncols, figsize[1] * nrows))
         return Figure(fig)
         
 
 class Plot(DisplayObject):
-    
+
+    @staticmethod
+    def grid(nrows = 1, ncols = 1, figsize=(6, 6)):
+        fig, _ = plt.subplots(nrows, ncols, figsize=(figsize[0] * ncols, figsize[1] * nrows))
+        global _ax_stack
+        _ax_stack = _ax_stack + list(reversed(fig.axes))
+
     def __init__(self, ax = None):
         global _ax_stack
         if ax == None:
