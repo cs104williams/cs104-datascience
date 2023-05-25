@@ -3407,7 +3407,6 @@ class Table(collections.abc.MutableMapping):
         else:
             ax = _ax_stack.pop()
             # so legends don't overlap adjacent if we are being given an axis...
-            fig = ax.get_figure()
             ax.get_figure().set_tight_layout(True)
         ax.clear()
         
@@ -4216,15 +4215,18 @@ global_kwargs = {
 
 class Figure(DisplayObject):
     
-    def __init__(self, fig = None):
-        if fig == None:
-            fig, _ = plt.subplots(1, 1, figsize=(6, 6))
+    def __init__(self, nrows = 1, ncols = 1, figsize=(6, 6)):
+        fig, ax = plt.subplots(nrows, ncols, figsize=(figsize[0] * ncols, figsize[1] * nrows))
         self.fig = fig
-        
+        self._axes = fig.axes
+
+    def axes(self):
+        return self._axes
+
     def __enter__(self):
         global _ax_stack
         self.old_stack = _ax_stack
-        _ax_stack = _ax_stack + list(reversed(self.fig.axes))
+        _ax_stack = _ax_stack + list(reversed(self._axes))
         
     def __exit__(self ,type, value, traceback):
         global _ax_stack
@@ -4244,19 +4246,19 @@ class Figure(DisplayObject):
         """Sneaky method to avoid printing any output if this is the result of a cell"""
         pass
 
-    @staticmethod
-    def grid(nrows = 1, ncols = 1, figsize=(6, 6)):
-        fig, _ = plt.subplots(nrows, ncols, figsize=(figsize[0] * ncols, figsize[1] * nrows))
-        return Figure(fig)
+    # @staticmethod
+    # def grid(nrows = 1, ncols = 1, figsize=(6, 6)):
+    #     fig, _ = plt.subplots(nrows, ncols, figsize=(figsize[1] * ncols, figsize[0] * nrows))
+    #     return Figure(fig)
         
 
 class Plot(DisplayObject):
 
-    @staticmethod
-    def grid(nrows = 1, ncols = 1, figsize=(6, 6)):
-        fig, _ = plt.subplots(nrows, ncols, figsize=(figsize[0] * ncols, figsize[1] * nrows))
-        global _ax_stack
-        _ax_stack = _ax_stack + list(reversed(fig.axes))
+    # @staticmethod
+    # def grid(nrows = 1, ncols = 1, figsize=(6, 6)):
+    #     fig, _ = plt.subplots(nrows, ncols, figsize=(figsize[1] * ncols, figsize[0] * nrows))
+    #     global _ax_stack
+    #     _ax_stack = _ax_stack + list(reversed(fig.axes))
 
     def __init__(self, ax = None):
         global _ax_stack
@@ -4335,7 +4337,7 @@ class Plot(DisplayObject):
         self.ax.set_yscale(v)
         return self
 
-    def line(self, x=None, y=None, color='blue', width=2, linestyle='solid', **kwargs):
+    def line(self, x=None, y=None, slope=None, intercept=None, color='blue', width=2, linestyle='solid', **kwargs):
         ax = self.ax
         self.zorder += 1
 
@@ -4349,19 +4351,35 @@ class Plot(DisplayObject):
         })
         kws.update(kwargs)
 
-        if x is None and y is None:
-            raise ValueError("Must supply at least one of x and y for line")
+        xl = ax.get_xlim()
+        yl = ax.get_ylim()
 
-        if y is None:
+        if x is None and y is None and slope is None and intercept is None:
+            raise ValueError("You must supply: x to create a vertical line; y to create a horizontal line; or either x/y or slope/intercept for any other line")
+        if slope is not None or intercept is not None:
+            if slope is None or intercept is None:
+                raise ValueError("You must supply: x to create a vertical line; y to create a horizontal line; or either x/y or slope/intercept for any other line")
+            if x is not None or y is not None:
+                raise ValueError("You must supply: x to create a vertical line; y to create a horizontal line; or either x/y or slope/intercept for any other line")
+
+        xl = ax.get_xlim()
+        yl = ax.get_ylim()
+
+        if slope is not None:
+            ax.axline((0,intercept), slope=slope, **kws)
+        elif y is None:
             ax.axvline(x, **kws)
         elif x is None:
             ax.axhline(y, **kws)
         else:
-            if np.shape(x) == ():
-                x = [ x, x ]
-            if np.shape(y) == ():
-                y = [ y, y ]
-            ax.axline(x, y, **kws)
+            if len(x) == 1:
+                x = [ x[0], x[0] ]
+            if len(y) == 1:
+                y = [ y[0], y[0] ] 
+            ax.plot(x,y, **kws)
+
+        ax.set_xlim(xl)
+        ax.set_ylim(yl)
     
     def interval(self, *x, y = 0, color='yellow', width=10,  **kwargs):
         ax = self.ax
@@ -4378,14 +4396,14 @@ class Plot(DisplayObject):
         })
         kws.update(kwargs)
 
-        if np.shape(x) == (1,2):
+        if len(x) == 1:
             x = x[0]
-        elif np.shape(x) != (2,):
+        if len(x) != 2:
                 raise ValueError("you must provide two numbers to mark an interval")
             
         ax.plot(x, [y,y], **kws)
         
-    def y_interval(self, *y, x = 0, color='yellow', width=10,  **kwargs):
+    def y_interval(self, y, x = 0, color='yellow', width=10,  **kwargs):
         ax = self.ax
         self.zorder += 1
 
@@ -4400,10 +4418,10 @@ class Plot(DisplayObject):
         })
         kws.update(kwargs)
 
-        if np.shape(y) == (1,2):
+        if len(y) == 1:
             y = y[0]
-        elif np.shape(y) != (2,):
-                raise ValueError("you must provide two numbers to mark an interval")
+        if len(y) != 2:
+            raise ValueError("you must provide two numbers to mark an interval")
             
         ax.plot([x, x], y, **kws)
     
