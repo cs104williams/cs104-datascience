@@ -27,6 +27,7 @@ from .predicates import are
 
 _number = (int, float, np.number)
 
+SCALE = 0.75
 
 class _FoliumWrapper(abc.ABC):
     """A map element that can be drawn."""
@@ -71,7 +72,7 @@ class Map(_FoliumWrapper, collections.abc.Mapping):
     _default_lat_lon = (37.872, -122.258)
     _default_zoom = 12
 
-    def __init__(self, features=(), ids=(), width=960, height=500, **kwargs):
+    def __init__(self, features=(), ids=(), width=960 * SCALE, height=500 * SCALE, **kwargs):
         if isinstance(features, np.ndarray):
             features = list(features)
         if isinstance(features, collections.abc.Sequence):
@@ -442,8 +443,8 @@ class _MapFeature(_FoliumWrapper, abc.ABC):
     """A feature displayed on a map. When displayed alone, a map is created."""
 
     # Default dimensions for displaying the feature in isolation
-    _width = 960
-    _height = 500
+    _width = 960 * SCALE
+    _height = 500 * SCALE
 
     def _set_folium_map(self):
         """A map containing only the feature."""

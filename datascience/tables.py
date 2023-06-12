@@ -3418,7 +3418,7 @@ class Table(collections.abc.MutableMapping):
         return ax, colors, plot_options
 
 
-    def barh(self, column_for_categories, select=None, legend=True, **kwargs):
+    def barh(self, column_for_categories, select=None, legend=True, colors=None, **kwargs):
         """Plot horizontal bar charts for the table.``
         
         Args:
@@ -3488,7 +3488,9 @@ class Table(collections.abc.MutableMapping):
         if n == 1: 
             options.setdefault('xlabel', labels[0])
 
-        ax, colors, plot_options = self._prep_axes(labels, **options)
+        ax, axes_colors, plot_options = self._prep_axes(labels, **options)
+        if colors is None:
+            colors = axes_colors
     
         for i, (label, color) in enumerate(zip(labels, colors)):
             ypos = index + margin + (1-2*margin)*(n - 1 - i) / n
@@ -3506,7 +3508,7 @@ class Table(collections.abc.MutableMapping):
         
         
 
-    def scatter(self, x_column, y_column=None, fit_line=False, group=None, sizes=None, legend=True, **kwargs):
+    def scatter(self, x_column, y_column=None, fit_line=False, group=None, sizes=None, legend=True, colors=None, **kwargs):
         """Creates scatterplots, optionally adding a line of best fit. Redirects to ``Table#iscatter``
         if interactive plots are enabled with ``Table#interactive_plots``
 
@@ -3586,7 +3588,10 @@ class Table(collections.abc.MutableMapping):
         s = options.setdefault('s', 20)
         options['height'] = kwargs.get('height', 6)
         
-        ax, colors, plot_options = self._prep_axes(y_labels, **options)
+        ax, axes_colors, plot_options = self._prep_axes(y_labels, **options)
+        if colors is None:
+            colors = axes_colors
+
 
         size_label = self._unused_label('size')
         if sizes is not None:
@@ -3632,7 +3637,7 @@ class Table(collections.abc.MutableMapping):
     
 
         
-    def hist(self, *columns, bins=None, group=None, left_end=None, right_end=None, legend=True, **kwargs):
+    def hist(self, *columns, bins=None, group=None, left_end=None, right_end=None, legend=True, colors=None, **kwargs):
         """Plots one histogram for each column in columns. If no column is
         specified, plot all columns.
 
@@ -3731,7 +3736,10 @@ class Table(collections.abc.MutableMapping):
         values_dict = [(k, self[k]) for k in labels]    
         values_dict = collections.OrderedDict(values_dict)
 
-        ax, colors, plot_options = self._prep_axes(labels, **options)
+        ax, axes_colors, plot_options = self._prep_axes(labels, **options)
+        if colors is None:
+            colors = axes_colors
+
         _vertical_x(ax)
         ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: "{:g}".format(100*x)))
         
@@ -4215,8 +4223,8 @@ global_kwargs = {
 
 class Figure(DisplayObject):
     
-    def __init__(self, nrows = 1, ncols = 1, figsize=(6, 6)):
-        fig, ax = plt.subplots(nrows, ncols, figsize=(figsize[0] * ncols, figsize[1] * nrows))
+    def __init__(self, nrows = 1, ncols = 1, figsize=(6, 6), **kwargs):
+        fig, ax = plt.subplots(nrows, ncols, figsize=(figsize[0] * ncols, figsize[1] * nrows), **kwargs)
         self.fig = fig
         self._axes = fig.axes
 
@@ -4260,13 +4268,14 @@ class Plot(DisplayObject):
     #     global _ax_stack
     #     _ax_stack = _ax_stack + list(reversed(fig.axes))
 
-    def __init__(self, ax = None):
+    def __init__(self, ax = None, **kwargs):
         global _ax_stack
         if ax == None:
             if len(_ax_stack) == 0:
                 _, ax = plt.subplots(figsize=(6, 6))
             else:
                 ax = _ax_stack.pop()
+        ax.set(**kwargs)
         self.ax = ax
         self.zorder = 30
     
@@ -4309,7 +4318,7 @@ class Plot(DisplayObject):
         self.ax.set_xlabel(v)
         return self
 
-    def set_xlim(self, v):
+    def set_xlim(self, *v):
         if len(v) == 2:
             v = make_array(v[0], v[1])
         else:
@@ -4335,6 +4344,10 @@ class Plot(DisplayObject):
 
     def set_yscale(self, v):
         self.ax.set_yscale(v)
+        return self
+    
+    def set_xticks(self, v):
+        self.ax.set_xticks(v)
         return self
 
     def line(self, x=None, y=None, slope=None, intercept=None, color='blue', width=2, linestyle='solid', **kwargs):
