@@ -3316,7 +3316,7 @@ class Table(collections.abc.MutableMapping):
             else:
                 legend = ax.legend(artists, labels, loc=2, title=title, bbox_to_anchor=(1.05, 1))
 
-    def plot(self, x_column, y_column=None, legend=True, **kwargs):
+    def plot(self, x_column, y_column=None, legend=True, colors=None, **kwargs):
         """Plot line charts for the table. 
         
         Args:
@@ -3369,7 +3369,9 @@ class Table(collections.abc.MutableMapping):
         if len(y_labels) == 1: 
             options.setdefault('ylabel', y_labels[0])
         
-        ax, colors, plot_options = self._prep_axes(y_labels, **options)
+        ax, axes_colors, plot_options = self._prep_axes(y_labels, **options)
+        if colors is None:
+            colors = axes_colors
     
         for label, color in zip(y_labels, colors):
             ax.plot(x_data, sorted_by_x_column[label], color=color, **plot_options)
@@ -3637,7 +3639,7 @@ class Table(collections.abc.MutableMapping):
     
 
         
-    def hist(self, *columns, bins=None, group=None, left_end=None, right_end=None, legend=True, colors=None, **kwargs):
+    def hist(self, *columns, bins=None, group=None, left_end=None, right_end=None, legend=True, colors=None, end_color=(253/256, 204/256, 9/256), **kwargs):
         """Plots one histogram for each column in columns. If no column is
         specified, plot all columns.
 
@@ -3789,7 +3791,7 @@ class Table(collections.abc.MutableMapping):
                 # only gets here if we had only one label and no group...
                 x_shade, height_shade, width_shade = _compute_shading(heights, bins.copy(), left_end, right_end)
                 ax.bar(x_shade, height_shade, width=width_shade,
-                         color=(253/256, 204/256, 9/256), align="edge")
+                         color=end_color, align="edge")
 
             legend_labels = labels
             legend_title = None
