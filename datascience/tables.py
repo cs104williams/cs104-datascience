@@ -4396,7 +4396,7 @@ class Plot(DisplayObject):
         ax.set_xlim(xl)
         ax.set_ylim(yl)
     
-    def interval(self, *x, y = 0, color='yellow', width=10,  **kwargs):
+    def interval(self, *x, y = 0, color='yellow', width=8,  **kwargs):
         ax = self.ax
         self.zorder += 1
 
@@ -4418,7 +4418,7 @@ class Plot(DisplayObject):
             
         ax.plot(x, [y,y], **kws)
         
-    def y_interval(self, y, x = 0, color='yellow', width=10,  **kwargs):
+    def y_interval(self, y, x = 0, color='yellow', width=8,  **kwargs):
         ax = self.ax
         self.zorder += 1
 
