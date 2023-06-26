@@ -4352,7 +4352,7 @@ class Plot(DisplayObject):
         self.ax.set_xticks(v)
         return self
 
-    def line(self, x=None, y=None, slope=None, intercept=None, color='blue', width=2, linestyle='solid', **kwargs):
+    def line(self, x=None, y=None, slope=None, intercept=None, color='blue', width=2, linestyle='solid', preserve_limits=True, **kwargs):
         ax = self.ax
         self.zorder += 1
 
@@ -4393,8 +4393,11 @@ class Plot(DisplayObject):
                 y = [ y[0], y[0] ] 
             ax.plot(x,y, **kws)
 
-        ax.set_xlim(xl)
-        ax.set_ylim(yl)
+        if preserve_limits:
+            ax.set_xlim(xl)
+            ax.set_ylim(yl)
+
+        return self
     
     def interval(self, *x, y = 0, color='yellow', width=8,  **kwargs):
         ax = self.ax
@@ -4417,6 +4420,7 @@ class Plot(DisplayObject):
                 raise ValueError("you must provide two numbers to mark an interval")
             
         ax.plot(x, [y,y], **kws)
+        return self
         
     def y_interval(self, y, x = 0, color='yellow', width=8,  **kwargs):
         ax = self.ax
@@ -4439,6 +4443,7 @@ class Plot(DisplayObject):
             raise ValueError("you must provide two numbers to mark an interval")
             
         ax.plot([x, x], y, **kws)
+        return self
     
 
     def dot(self, x=0, y=0, color='red', size=150, **kwargs):
@@ -4463,7 +4468,9 @@ class Plot(DisplayObject):
             x = np.full(np.shape(y), x)
 
         ax.scatter(x, y, **kws)
+        return self
 
         
     def square(self, x=0, y=0, color='limegreen', size=150, **kwargs):
         self.dot(x, y, color, size, marker='s', **kwargs)
+        return self
