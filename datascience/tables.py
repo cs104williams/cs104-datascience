@@ -2774,15 +2774,16 @@ class Table(collections.abc.MutableMapping):
     
     
     def _clean_for_column(self, column_name, expected_type):
-        """Given a table, and column name, and the type of data you expect
-           in that column (eg: str, int, or float), this function returns
-           a new copy of the table with the following changes:
+        """
+        Given a table, and column name, and the type of data you expect
+        in that column (eg: str, int, or float), this function returns
+        a new copy of the table with the following changes:
 
-             - Any rows with missing values in the given column are removed.
-             - Any rows with values in the given column that are not of the 
-               expected type are removed.
+            - Any rows with missing values in the given column are removed.
+            - Any rows with values in the given column that are not of the 
+            expected type are removed.
 
-            Returns a new table and also a table with the removed rows
+        Returns a new table and also a table with the removed rows.
         """
 
         def has_type(T):
@@ -2822,6 +2823,17 @@ class Table(collections.abc.MutableMapping):
         return new_table, removed_rows
 
     def _clean_for_columns(self, *labels_and_types):
+        """
+        Given a table, and a list of column names/types of data you expect
+        in that column (eg: str, int, or float), this function returns
+        a new copy of the table with the following changes:
+
+            - Any rows with missing values in the given columns are removed.
+            - Any rows with values in the given columns that are not of the 
+            expected type are removed.
+
+        Returns a new table and also a table with the removed rows.
+        """
 
         if len(labels_and_types) == 1:
             labels_and_types = labels_and_types[0]
@@ -2851,12 +2863,29 @@ class Table(collections.abc.MutableMapping):
 
         return (kept, removed)
 
-    
     def take_clean(self, *labels_and_types):
+        """
+        Returns a new table with only the rows with valid values of the appropriate 
+        type for each specified column.
+
+        Examples:
+        * messy_tiles.take_clean('count', int)
+        * messy_tiles.take_clean('count', int, 'points', float)
+
+        """
         clean, messy = self._clean_for_columns(*labels_and_types)
         return clean
 
     def take_messy(self, *labels_and_types):
+        """
+        Returns a new table with only the rows with *invalid* values 
+        of the appropriate type for each specified column.
+
+        Examples:
+        * messy_tiles.take_messy('count', int)
+        * messy_tiles.take_messy('count', int, 'points', float)
+        
+        """
         clean, messy = self._clean_for_columns(*labels_and_types)
         return messy
 
@@ -3261,6 +3290,8 @@ class Table(collections.abc.MutableMapping):
     # Visualizations #
     ##################
     
+    # Default configurations for our various types of plots
+
     default_plot_options = {
         'width': 6,
         'height': 6,
@@ -3297,6 +3328,12 @@ class Table(collections.abc.MutableMapping):
     ]
     
     def split(self, keys_lists, kwargs):
+        """
+        Take a list containing lists of keys and a set of kwargs. It 
+        returns a list of kwargs, divided by the given keys.  The last
+        item in the list contains those key-value pairs that did
+        not get matched to any key in any list.
+        """
         args_lists = [ {} for _ in range(len(keys_lists)) ]
         args_last = { }
         for key,value in kwargs.items():
@@ -3310,6 +3347,9 @@ class Table(collections.abc.MutableMapping):
         return args_lists
      
     def _complete_axes(self, ax, title=None, labels=[], artists=None):
+        """
+        Add a legend to a plot if needed.
+        """
         if len(labels) > 1:
             if artists == None:
                 legend = ax.legend(labels, loc=2, title=title, bbox_to_anchor=(1.05, 1))                
@@ -3325,10 +3365,9 @@ class Table(collections.abc.MutableMapping):
                 to plot use all other columns for y.
 
         Kwargs:
-            width:
-            height:
-            
-            ...
+            legend: Whether to show the legend on the plot.
+
+            colors: a list of colors to use instead of the default colors.
             
             kwargs: Additional arguments that get passed into `plt.plot`.
                 See http://matplotlib.org/api/pyplot_api.html#matplotlib.pyplot.plot
@@ -3384,9 +3423,21 @@ class Table(collections.abc.MutableMapping):
 
 
     def _default_colors(self):
+        """
+        Return the default colors for the current color cycle.
+        """
         return [matplotlib.colors.to_rgba(c) for c in plt.rcParams['axes.prop_cycle'].by_key()['color']]
         
     def _prep_axes(self, y_labels, **kwargs):
+        """
+        Set up the axes for a new plot, using the default styling.  If not axes is on
+        the internal stack, create a new one.  Otherwise, pop an axes off the stack
+        to use.
+
+        Returns the axes, the default colors, and any additional kwargs not consumed
+        by this code (eg, those other than width, height, and the standard plot options
+        in axis_properties).
+        """
 
         set_global_theme()
         
@@ -3426,13 +3477,15 @@ class Table(collections.abc.MutableMapping):
         Args:
             ``column_for_categories`` (``str``): A column containing y-axis categories
                 used to create buckets for bar chart.
+
+            select: the columns to plot according to the categories.
         
         Kwargs:
-            overlay (bool): create a chart with one color per data column;
-                if False, each will be displayed separately.
-            show (bool): whether to show the figure if using interactive plots; if false, the 
-                figure is returned instead
-            vargs: Additional arguments that get passed into `plt.barh`.
+            legend: Whether to show the legend on the plot.
+
+            colors: a list of colors to use instead of the default colors.
+            
+            kwargs: Additional arguments that get passed into `plt.barh`.
                 See http://matplotlib.org/api/pyplot_api.html#matplotlib.pyplot.barh
                 for additional arguments that can be passed into vargs.
         
@@ -3511,8 +3564,7 @@ class Table(collections.abc.MutableMapping):
         
 
     def scatter(self, x_column, y_column=None, fit_line=False, group=None, sizes=None, legend=True, colors=None, **kwargs):
-        """Creates scatterplots, optionally adding a line of best fit. Redirects to ``Table#iscatter``
-        if interactive plots are enabled with ``Table#interactive_plots``
+        """Creates scatterplots, optionally adding a line of best fit. 
 
         args:
             ``column_for_x`` (``str``): the column to use for the x-axis values
@@ -3525,11 +3577,14 @@ class Table(collections.abc.MutableMapping):
 
             ``sizes``:  a column of values to set the relative areas of dots.
 
-            ``legend``: whether to show the legend
+            ``legend``: Whether to show the legend on the plot.
+
+            ``colors``: a list of colors to use instead of the default colors.
+            
 
         kwargs:
 
-            ``vargs``: additional arguments that get passed into `plt.scatter`.
+            ``kwargs``: additional arguments that get passed into `plt.scatter`.
                 see http://matplotlib.org/api/pyplot_api.html#matplotlib.pyplot.scatter
                 for additional arguments that can be passed into vargs. these
                 include: `marker` and `norm`, to name a couple.
@@ -3659,6 +3714,12 @@ class Table(collections.abc.MutableMapping):
                 the histogram. If only one of these is None, then that property
                 will be treated as the extreme edge of the histogram. If both are
                 left None, then no shading will occur.
+
+            legend: Whether to show the legend on the plot.
+
+            colors: a list of colors to use instead of the default colors.         
+
+            end_color: the default color for the shading controlled by the ends.
 
             kwargs: Additional arguments that get passed into :func:plt.hist.
                 See http://matplotlib.org/api/pyplot_api.html#matplotlib.pyplot.hist
@@ -4224,21 +4285,56 @@ global_kwargs = {
 }
 
 class Figure(DisplayObject):
+    """A figure contains one or more Plots, layed out in a grid."""
     
     def __init__(self, nrows = 1, ncols = 1, figsize=(6, 6), **kwargs):
+        """
+        Create a new Figure of plots with the given number of rows `nrows` 
+        and columns `ncols`.  The figsize parameter is the size of *one* plot.
+        The initializer takes the same `kwargs` as `matplotlib.subplots`.
+        """
         fig, ax = plt.subplots(nrows, ncols, figsize=(figsize[0] * ncols, figsize[1] * nrows), **kwargs)
         self.fig = fig
         self._axes = fig.axes
 
     def axes(self):
+        """
+        Returns the matplotlib axes for the unerlying matplotlib figure.
+        """
         return self._axes
 
     def __enter__(self):
+        """
+        Typically, a Figure is used in the following way:
+        
+            fig = Figure(nrows, ncols, ...)
+            with fig:
+                ... 
+                code to create nrows * ncols plots with Table methods
+                ...
+
+        In this case, the library uses Plot objects for the Figure's subplots
+        when running the code to create the plots.  The plots are filled in
+        from top-left to bottom-right.
+        """
         global _ax_stack
         self.old_stack = _ax_stack
         _ax_stack = _ax_stack + list(reversed(self._axes))
         
     def __exit__(self ,type, value, traceback):
+        """
+        Typically, a Figure is used in the following way:
+        
+            fig = Figure(nrows, ncols, ...)
+            with fig:
+                ... 
+                code to create nrows * ncols plots with Table methods
+                ...
+
+        In this case, the library uses Plot objects for the Figure's subplots
+        when running the code to create the plots.  The plots are filled in
+        from top-left to bottom-right.
+        """
         global _ax_stack
         _ax_stack = self.old_stack
         
@@ -4256,21 +4352,19 @@ class Figure(DisplayObject):
         """Sneaky method to avoid printing any output if this is the result of a cell"""
         pass
 
-    # @staticmethod
-    # def grid(nrows = 1, ncols = 1, figsize=(6, 6)):
-    #     fig, _ = plt.subplots(nrows, ncols, figsize=(figsize[1] * ncols, figsize[0] * nrows))
-    #     return Figure(fig)
-        
 
 class Plot(DisplayObject):
-
-    # @staticmethod
-    # def grid(nrows = 1, ncols = 1, figsize=(6, 6)):
-    #     fig, _ = plt.subplots(nrows, ncols, figsize=(figsize[1] * ncols, figsize[0] * nrows))
-    #     global _ax_stack
-    #     _ax_stack = _ax_stack + list(reversed(fig.axes))
+    """A Plot is an object that lets you customize how a graph looks.  
+    Plot objects also enable you to add annotations to the plot, including 
+    points, lines, and intervals.  Generally, you do not create Plot objects
+    directly, but rather use the ones return from the Table methods that 
+    produce plots (eg. plot,scatter,hist,barh)."""
 
     def __init__(self, ax = None, **kwargs):
+        """
+        Create a Plot for the given underlying matplotlib axes.  Takes
+        the same kwargs as the matplotlib.subplots method.
+        """
         global _ax_stack
         if ax == None:
             if len(_ax_stack) == 0:
@@ -4306,53 +4400,115 @@ class Plot(DisplayObject):
         pass
 
     def set(self, property, v):
+        f"""
+        Set the property of a Plot.  The available properties are:
+        {', '.join(Table.axis_properties)}.
+        """
         if property in Table.axis_properties:
             self.ax.set(property, v)
             return self
         else:
             ValueError(f"Can only set these properties for plots: {Table.axis_properties}")
             
-    def set_title(self, v):
-        self.ax.set_title(v)
+    def set_title(self, title):
+        """
+        Set the title to a new string.
+        """
+        self.ax.set_title(title)
         return self
 
-    def set_xlabel(self, v):
-        self.ax.set_xlabel(v)
+    def set_xlabel(self, label):
+        """
+        Set the x-axis label to a new string.
+        """
+        self.ax.set_xlabel(label)
         return self
 
-    def set_xlim(self, *v):
-        if len(v) == 2:
-            v = make_array(v[0], v[1])
+    def set_xlim(self, *limits):
+        """
+        Set the x-axis limits.  You may pass the limits
+        as a pair of numbers or as an array of two numbers:
+
+        plot.set_xlim(low, high)
+        plot.set_xlim(make_array(low, high))
+        """
+
+        if len(limits) == 2:
+            limits = make_array(limits[0], limits[1])
         else:
-            v = v[0]
-        self.ax.set_xlim(v)
+            limits = limits[0]
+        self.ax.set_xlim(limits)
         return self
 
-    def set_xscale(self, v):
-        self.ax.set_xscale(v)
+    def set_xscale(self, scale):
+        """
+        Set the x-axis scale.  scale should be "linear" or "log"
+        """
+        self.ax.set_xscale(scale)
         return self
 
-    def set_ylabel(self, v):
-        self.ax.set_ylabel(v)
+    def set_ylabel(self, label):
+        """
+        Set the y axis label to a new string.
+        """
+        self.ax.set_ylabel(label)
         return self
 
-    def set_ylim(self, *v):
-        if len(v) == 2:
-            v = make_array(v[0], v[1])
+    def set_ylim(self, *limits):
+        """
+        Set the y-axis limits.  You may pass the limits
+        as a pair of numbers or as an array of two numbers:
+
+        plot.set_ylim(low, high)
+        plot.set_ylim(make_array(low, high))
+        """
+        if len(limits) == 2:
+            limits = make_array(limits[0], limits[1])
         else:
-            v = v[0]
-        self.ax.set_ylim(v)
+            limits = limits[0]
+        self.ax.set_ylim(limits)
         return self
 
-    def set_yscale(self, v):
-        self.ax.set_yscale(v)
+    def set_yscale(self, scale):
+        """
+        Set the y-axis scale.  scale should be "linear" or "log"
+        """
+        self.ax.set_yscale(scale)
         return self
     
     def set_xticks(self, v):
         self.ax.set_xticks(v)
         return self
 
-    def line(self, x=None, y=None, slope=None, intercept=None, color='blue', width=2, linestyle='solid', preserve_limits=True, **kwargs):
+    def line(self, x=None, y=None, slope=None, intercept=None, color='blue', width=2, linestyle='solid', clip_on=True, **kwargs):
+        """
+        Adds a line to a plot.  You may describe the line to draw with several parameters:
+          
+        * use `x=v` to draw an infinite vertical line at the given x-value;
+        * use `y=v` to draw an infinite horizontal line at the given y-value;
+        * use `x=xs` and `y=ys`, where are `xs` and `ys` contain two values, to specify the the x and y values 
+        for two end-points of a **line segment**; or
+        * use a `slope=a` and `intercept=b` to describe any other infinite line.  
+
+        Examples:
+
+        plot.line(x=v)
+        plot.line(y=v)
+        plot.line(x=xs, y=ys)
+        plot.line(slope=a, intercept=b)
+
+        Additional arguments:
+
+        - color: the color of the line.  See https://matplotlib.org/stable/gallery/color/named_colors.html
+
+        - width: the width of the line in pixels.
+
+        - linestyle: the type of line, typically 'solid', 'dotted', or 'dashed'
+
+        - clip_on: the limits of the plot will not be changed by line annotations if this is True.
+
+        - kwargs: this method takes any other arguments available in matplotplib's line functions.
+        """        
         ax = self.ax
         self.zorder += 1
 
@@ -4393,13 +4549,36 @@ class Plot(DisplayObject):
                 y = [ y[0], y[0] ] 
             ax.plot(x,y, **kws)
 
-        if preserve_limits:
+        if clip_on:
             ax.set_xlim(xl)
             ax.set_ylim(yl)
 
         return self
     
     def interval(self, *x, y = 0, color='yellow', width=8,  **kwargs):
+<<<<<<< HEAD
+=======
+        """
+        Marks an interval on the x-axis with a yellow bar.  Call either `low` 
+        and `high` values or with a `range` array containing those values.
+        
+        Examples:
+
+        plot.interval(low, high)
+        plot.interval(range)
+        
+        Additional arguments:
+
+        - y: where on the y-axis the interval is placed.  The default is 0.
+
+        - color: the color of the intveral line.  See https://matplotlib.org/stable/gallery/color/named_colors.html
+
+        - width: the width of the line in pixels.
+
+        - kwargs: this method takes any other arguments available in matplotplib's line functions.
+        """        
+
+>>>>>>> b4d4c85c0f9c9b5761ee649dfb40590fa7c9732b
         ax = self.ax
         self.zorder += 1
 
@@ -4422,7 +4601,31 @@ class Plot(DisplayObject):
         ax.plot(x, [y,y], **kws)
         return self
         
+<<<<<<< HEAD
     def y_interval(self, y, x = 0, color='yellow', width=8,  **kwargs):
+=======
+    def y_interval(self, y, x = 0, color='yellow', width=10,  **kwargs):
+        """
+        Marks an interval on the y-axis with a yellow bar.  Call either `low` 
+        and `high` values or with a `range` array containing those values.
+        
+        Examples:
+
+        plot.y_interval(low, high)
+        plot.y_interval(range)
+        
+        Additional arguments:
+
+        - x: where on the x-axis the interval is placed.  The default is 0.
+
+        - color: the color of the intveral line.  See https://matplotlib.org/stable/gallery/color/named_colors.html
+
+        - width: the width of the line in pixels.
+
+        - kwargs: this method takes any other arguments available in matplotplib's line functions.
+        """        
+
+>>>>>>> b4d4c85c0f9c9b5761ee649dfb40590fa7c9732b
         ax = self.ax
         self.zorder += 1
 
@@ -4447,6 +4650,26 @@ class Plot(DisplayObject):
     
 
     def dot(self, x=0, y=0, color='red', size=150, **kwargs):
+        """
+        Places a circle marker on a scatter plot, line plot, or histogram.  
+        If only `x` is provided, the marker is centered at `(x,0)`.  
+        Otherwise, it is centered at `(x,y)`.  The default is a large,
+        red dot with a white outline.
+        
+        Examples:
+
+        plot.dot(x) 
+        plot.dot(x, y) 
+
+        Additional arguments:
+
+        - color: the color of the intveral line.  See https://matplotlib.org/stable/gallery/color/named_colors.html
+
+        - size: the area of the dot.
+
+        - kwargs: this method takes any other arguments available in matplotplib's scatter functions.
+        """
+
         ax = self.ax
         self.zorder += 1
 
@@ -4472,5 +4695,25 @@ class Plot(DisplayObject):
 
         
     def square(self, x=0, y=0, color='limegreen', size=150, **kwargs):
+        """
+        Places a square marker on a scatter plot, line plot, or histogram.  
+        If only `x` is provided, the marker is centered at `(x,0)`.  
+        Otherwise, it is centered at `(x,y)`.  The default is a large,
+        green dot with a white outline.
+        
+        Examples:
+
+        plot.dot(x) 
+        plot.dot(x, y) 
+
+        Additional arguments:
+
+        - color: the color of the intveral line.  See https://matplotlib.org/stable/gallery/color/named_colors.html
+
+        - size: the area of the dot.
+
+        - kwargs: this method takes any other arguments available in matplotplib's scatter functions.
+        """
+
         self.dot(x, y, color, size, marker='s', **kwargs)
         return self
