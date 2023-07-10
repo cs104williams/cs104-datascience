@@ -4556,8 +4556,6 @@ class Plot(DisplayObject):
         return self
     
     def interval(self, *x, y = 0, color='yellow', width=8,  **kwargs):
-<<<<<<< HEAD
-=======
         """
         Marks an interval on the x-axis with a yellow bar.  Call either `low` 
         and `high` values or with a `range` array containing those values.
@@ -4578,7 +4576,6 @@ class Plot(DisplayObject):
         - kwargs: this method takes any other arguments available in matplotplib's line functions.
         """        
 
->>>>>>> b4d4c85c0f9c9b5761ee649dfb40590fa7c9732b
         ax = self.ax
         self.zorder += 1
 
@@ -4601,10 +4598,7 @@ class Plot(DisplayObject):
         ax.plot(x, [y,y], **kws)
         return self
         
-<<<<<<< HEAD
     def y_interval(self, y, x = 0, color='yellow', width=8,  **kwargs):
-=======
-    def y_interval(self, y, x = 0, color='yellow', width=10,  **kwargs):
         """
         Marks an interval on the y-axis with a yellow bar.  Call either `low` 
         and `high` values or with a `range` array containing those values.
@@ -4625,7 +4619,6 @@ class Plot(DisplayObject):
         - kwargs: this method takes any other arguments available in matplotplib's line functions.
         """        
 
->>>>>>> b4d4c85c0f9c9b5761ee649dfb40590fa7c9732b
         ax = self.ax
         self.zorder += 1
 
