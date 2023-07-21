@@ -4609,7 +4609,7 @@ class Plot(DisplayObject):
         ax.plot(x, [y,y], **kws)
         return self
         
-    def y_interval(self, y, x = 0, color='yellow', width=10,  **kwargs):
+    def y_interval(self, y, x = 0, color='yellow', width=8,  **kwargs):
         """
         Marks an interval on the y-axis with a yellow bar.  Call either `low` 
         and `high` values or with a `range` array containing those values.
