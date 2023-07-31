@@ -3732,6 +3732,8 @@ class Table(collections.abc.MutableMapping):
 
             end_color: the default color for the shading controlled by the ends.
 
+            unit: the string name of the unit for the x-axes.
+
             kwargs: Additional arguments that get passed into :func:plt.hist.
                 See http://matplotlib.org/api/pyplot_api.html#matplotlib.pyplot.hist
                 for additional arguments that can be passed into vargs. These
@@ -3764,10 +3766,8 @@ class Table(collections.abc.MutableMapping):
         <two overlaid histograms of the data [1, 2, 3] and [2, 5]>
         """
   
-        if 'unit' in kwargs:
-            warnings.warn("'unit' keyword argument is ignored.")
-            kwargs = kwargs.copy()
-            kwargs.pop('unit')
+        kwargs = kwargs.copy()
+        unit = kwargs.pop('unit', 'unit')
 
         options = self.default_hist_options.copy()
         options.update(kwargs)
@@ -3787,7 +3787,7 @@ class Table(collections.abc.MutableMapping):
                 
         if len(labels) == 1:
             options.setdefault('xlabel', labels[0])
-        options.setdefault('ylabel', 'Percent per unit')
+        options.setdefault('ylabel', f'Percent per {unit}')
 
 
         # Check for non-numerical values and raise a ValueError if any found
