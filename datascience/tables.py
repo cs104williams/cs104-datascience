@@ -4490,6 +4490,32 @@ class Plot(DisplayObject):
     def set_xticks(self, v):
         self.ax.set_xticks(v)
         return self
+            
+    def get_title(self):
+        return self.ax.get_title()
+
+    def get_xlabel(self):
+        return self.ax.get_xlabel()
+
+    def get_xlim(self):
+        return self.ax.get_xlim()
+
+    def get_xscale(self):
+        return self.ax.get_xscale()
+
+    def get_ylabel(self):
+        return self.ax.get_ylabel()
+
+    def get_ylim(self):
+        return self.ax.get_ylim()
+
+    def get_yscale(self):
+        return self.ax.get_yscale()
+    
+    def get_xticks(self):
+        return self.ax.get_xticks()
+
+
 
     def line(self, x=None, y=None, slope=None, intercept=None, color='blue', width=2, linestyle='solid', clip_on=True, **kwargs):
         """
