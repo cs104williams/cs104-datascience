@@ -2889,6 +2889,17 @@ class Table(collections.abc.MutableMapping):
         clean, messy = self._clean_for_columns(*labels_and_types)
         return messy
 
+    def replace(table, col, old, new):
+        """
+        Returns a copy of the table where any value equal to old in
+        the given table is replaced with new.        
+        """
+        def replace_if_match(value):
+            if value == old:
+                return new
+            else:
+                return value
+        return table.with_column(col, table.apply(replace_if_match, col))
 
     
     ##########################
