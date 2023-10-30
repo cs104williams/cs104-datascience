@@ -4309,7 +4309,7 @@ global_kwargs = {
 class Figure(DisplayObject):
     """A figure contains one or more Plots, layed out in a grid."""
     
-    def __init__(self, nrows = 1, ncols = 1, figsize=(6, 6), **kwargs):
+    def __init__(self, nrows = 1, ncols = 1, figsize=(6, 6), title=None, **kwargs):
         """
         Create a new Figure of plots with the given number of rows `nrows` 
         and columns `ncols`.  The figsize parameter is the size of *one* plot.
@@ -4318,6 +4318,8 @@ class Figure(DisplayObject):
         fig, ax = plt.subplots(nrows, ncols, figsize=(figsize[0] * ncols, figsize[1] * nrows), **kwargs)
         self.fig = fig
         self._axes = fig.axes
+        if title != None:
+            fig.suptitle(title,size=plt.rcParams['axes.titlesize'])
 
     def axes(self):
         """
