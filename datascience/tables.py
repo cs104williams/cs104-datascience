@@ -3828,27 +3828,12 @@ class Table(collections.abc.MutableMapping):
         _vertical_x(ax)
         ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: "{:g}".format(100*x)))
         
-        
-        if left_end is not None or right_end is not None:
-            if group is not None:
+        if group is not None:
+
+            if left_end is not None or right_end is not None:
                 raise ValueError("Using group with left_end or right_end"
                                  " is not currently unsupported.")
-            if len(labels) > 1:
-                raise ValueError("Using multiple value columns with left_end or right_end"
-                                 " is not currently unsupported.")
 
-            if left_end is None:
-                if bins is not None and bins[0]:
-                    left_end = bins[0]
-                else:
-                    left_end = min([min(self.column(k)) for k in labels])
-            elif right_end is None:
-                if bins is not None and bins[-1]:
-                    right_end = bins[-1]
-                else:
-                    right_end = max([max(self.column(k)) for k in labels])
-
-        if group is not None:
             if len(labels) > 1:
                 raise ValueError("Grouping is not compatible with multiple histogram columns")
             
@@ -3870,7 +3855,23 @@ class Table(collections.abc.MutableMapping):
                 x = [self[label] for label in labels]
             heights, bins, _ = ax.hist(x, color=colors, **plot_options)
 
-            if left_end is not None and right_end is not None:
+            if left_end is not None or right_end is not None:
+                if len(labels) > 1:
+                    raise ValueError("Using multiple value columns with left_end or right_end"
+                                    " is not currently unsupported.")
+
+                if left_end is None:
+                    if bins is not None and bins[0]:
+                        left_end = bins[0]
+                    else:
+                        left_end = min([min(self.column(k)) for k in labels])
+                elif right_end is None:
+                    if bins is not None and bins[-1]:
+                        right_end = bins[-1]
+                    else:
+                        right_end = max([max(self.column(k)) for k in labels])
+
+            if left_end is not None and right_end is not None and left_end < right_end:
                 # only gets here if we had only one label and no group...
                 x_shade, height_shade, width_shade = _compute_shading(heights, bins.copy(), left_end, right_end)
                 ax.bar(x_shade, height_shade, width=width_shade,
