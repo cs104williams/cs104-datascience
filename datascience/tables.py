@@ -1,3 +1,4 @@
+
 """Tables are sequences of labeled columns."""
 
 __all__ = [ 'Table', 'Plot', 'Figure' ]
@@ -3637,6 +3638,9 @@ class Table(collections.abc.MutableMapping):
         options = self.default_scatter_options.copy()
         options.update(kwargs)
 
+        if 'color' in kwargs and colors is not None:
+            raise ValueError('Provide either colors or color, but not both parameters.')
+
         x_label = self._as_label(x_column)
         x_data, y_labels = self._split_column_and_labels(x_label)
         
@@ -3657,9 +3661,11 @@ class Table(collections.abc.MutableMapping):
         options['height'] = kwargs.get('height', 6)
         
         ax, axes_colors, plot_options = self._prep_axes(y_labels, **options)
-        if colors is None:
-            colors = axes_colors
 
+        if 'color' in kwargs:
+            colors = [ kwargs['color'] ]
+        elif colors is None:
+            colors = axes_colors
 
         size_label = self._unused_label('size')
         if sizes is not None:
@@ -3695,6 +3701,8 @@ class Table(collections.abc.MutableMapping):
                 raise ValueError("Grouping is not compatible with multiple y columns")
             
             group_values = sorted(np.unique(self.column(group)))
+
+            # This supercedes color and colors parameters at the moment.
             colors = list(itertools.islice(itertools.cycle(self._default_colors()), len(group_values)))
             legend_artists = []
             for v,c in zip(group_values, colors):
@@ -4425,9 +4433,16 @@ class Plot(DisplayObject):
         pass
 
     def set(self, property, v):
-        f"""
+        """
         Set the property of a Plot.  The available properties are:
-        {', '.join(Table.axis_properties)}.
+            'clip_on',
+            'title',
+            'xlabel',
+            'xlim',
+            'xscale',
+            'ylabel',
+            'ylim',
+            'yscale'
         """
         if property in Table.axis_properties:
             self.ax.set(property, v)
@@ -4735,6 +4750,7 @@ class Plot(DisplayObject):
             x = np.full(np.shape(y), x)
 
         ax.scatter(x, y, **kws)
+
         return self
 
         
@@ -4761,3 +4777,4 @@ class Plot(DisplayObject):
 
         self.dot(x, y, color, size, marker='s', **kwargs)
         return self
+
