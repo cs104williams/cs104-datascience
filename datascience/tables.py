@@ -3680,20 +3680,17 @@ class Table(collections.abc.MutableMapping):
             opts.setdefault('color', color)
             artist = ax.scatter(x_values, y_values, sizes = size_values, **opts)
             if fit_line:
+                a, b = np.polyfit(x_values, y_values, 1)
 
-                # Make sure the line is fitted propertly to log-scaled data.
-                if options.get('xscale', None) == 'log':
-                    scaled_x_values = np.log(x_values)
+                # if we have a log or log-log plot, plot all points so we can see
+                # the curve.  Otherwise, just the min/max is sufficient.
+                if options.get('xscale', None) == 'log' or options.get('yscale', None) == 'log':
+                    sorted_x = np.sort(x_values)
+                    ax.plot(sorted_x, a * sorted_x + b, color = color, lw = 3, label='_skip')
                 else:
-                    scaled_x_values = x_values
-                if options.get('yscale', None) == 'log':
-                    scaled_y_values = np.log(y_values)
-                else:
-                    scaled_y_values = y_values
+                    minx, maxx = np.min(x_values),np.max(x_values)
+                    ax.plot([minx,maxx],[a * minx + b, a * maxx + b], color = color, lw = 3, label='_skip')
 
-                m, b = np.polyfit(scaled_x_values, scaled_y_values, 1)
-                minx, maxx = np.min(x_values),np.max(x_values)
-                ax.plot([minx,maxx],[m*minx+b,m*maxx+b], color = color, lw = 3, label='_skip')
             return artist
         
         if group is not None:
