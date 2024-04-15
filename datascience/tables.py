@@ -4,11 +4,13 @@
 __all__ = [ 'Table', 'Plot', 'Figure' ]
 
 import abc
+import base64
 import collections
 import collections.abc
 import copy
 import functools
 import inspect
+import io
 import itertools
 import numbers
 import urllib.parse
@@ -4388,7 +4390,7 @@ class Figure(DisplayObject):
         buf.seek(0)
         img_base64 = base64.b64encode(buf.getvalue()).decode("utf-8")
 
-        return f"""<img src="data:image/png;base64,f{img_base64}">"""
+        return f"""<img src="data:image/png;base64,{img_base64}"/>"""
 
 
 
@@ -4414,6 +4416,14 @@ class Plot(DisplayObject):
         self.ax = ax
         self.zorder = 30
     
+    def _repr_html_(self):
+        buf = io.BytesIO()
+        plt.savefig(buf, format="png")
+        buf.seek(0)
+        img_base64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+
+        return f"""<img src="data:image/png;base64,{img_base64}"/>"""
+
     def __enter__(self):
         global _ax_stack
         self.old_stack = _ax_stack
