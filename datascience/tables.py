@@ -4382,6 +4382,15 @@ class Figure(DisplayObject):
         """Sneaky method to avoid printing any output if this is the result of a cell"""
         pass
 
+    def _repr_html_(self):
+        buf = io.BytesIO()
+        plt.savefig(buf, format="png")
+        buf.seek(0)
+        img_base64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+
+        return f"""<img src="data:image/png;base64,f{img_base64}">"""
+
+
 
 class Plot(DisplayObject):
     """A Plot is an object that lets you customize how a graph looks.  
