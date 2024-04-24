@@ -4385,6 +4385,7 @@ class Figure(DisplayObject):
         pass
 
     def _repr_html_(self):
+        plt.tight_layout()
         buf = io.BytesIO()
         plt.savefig(buf, format="png")
         buf.seek(0)
@@ -4417,6 +4418,7 @@ class Plot(DisplayObject):
         self.zorder = 30
     
     def _repr_html_(self):
+        plt.tight_layout()
         buf = io.BytesIO()
         plt.savefig(buf, format="png")
         buf.seek(0)
